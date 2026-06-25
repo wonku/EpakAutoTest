@@ -1,0 +1,47 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api member login with valid credentials",
+    "description": "Verify that POST /api/member/login with valid account and encrypted password returns HTTP 200 with a response containing code, token, memberId, and userId, enabling subsequent CRM API calls."
+  },
+  {
+    "id": "TC002",
+    "title": "post api crm lead saveorupdate with valid auth and payload",
+    "description": "Verify that POST /api/crm/lead/saveOrUpdate with valid authentication headers and valid lead data creates or updates a sales lead successfully, returning HTTP 200 with code 1000 and lead data."
+  },
+  {
+    "id": "TC003",
+    "title": "post api crm lead page with valid auth and filters",
+    "description": "Verify that POST /api/crm/lead/page with valid authentication headers and filters like phone or name returns HTTP 200 with code and matching lead records in the data array."
+  },
+  {
+    "id": "TC004",
+    "title": "post api crm lead claimlead with valid auth and leadids",
+    "description": "Verify that POST /api/crm/lead/claimLead with valid authentication headers and leadIds claims the leads successfully, returning HTTP 200 with code 1000."
+  },
+  {
+    "id": "TC005",
+    "title": "post api crm lead assign with valid auth and assignment data",
+    "description": "Verify that POST /api/crm/lead/assign with valid authentication headers, leadIds, newFollowUserId, and newFollowUserName assigns leads correctly, returning HTTP 200 with code 1000."
+  },
+  {
+    "id": "TC006",
+    "title": "post api crm lead movepublicsea with valid auth and reason",
+    "description": "Verify that POST /api/crm/lead/movePublicSea with valid authentication headers, leadIds, publicSeaReasonCode, and remark moves leads to public sea successfully, returning HTTP 200 with code 1000."
+  },
+  {
+    "id": "TC007",
+    "title": "post api crm common activity saveorupdate with valid auth and relationid",
+    "description": "Verify that POST /api/crm/common/activity/saveOrUpdate with valid authentication headers and valid relationId creates or updates an activity record linked to a lead, returning HTTP 200 with code 1000."
+  },
+  {
+    "id": "TC008",
+    "title": "get api crm common country list with valid auth",
+    "description": "Verify that GET /api/crm/common/country/list with valid authentication headers returns HTTP 200 with code and a data array of countries for lead countryCode resolution."
+  },
+  {
+    "id": "TC009",
+    "title": "get api member user effective list with valid auth",
+    "description": "Verify that GET /api/member/user/effective/list with valid authentication headers returns HTTP 200 with a data array of effective users for lead assignment selection."
+  }
+]

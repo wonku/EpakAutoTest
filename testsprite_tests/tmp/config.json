@@ -1,0 +1,17 @@
+{
+  "status": "init",
+  "scope": "codebase",
+  "type": "backend",
+  "localEndpoint": "http://localhost:443/",
+  "serverPort": 50391,
+  "executionArgs": {
+    "projectName": "Pyautotest",
+    "projectPath": "e:\\cursor\\Pyautotest",
+    "testIds": [],
+    "additionalInstruction": "This is a test automation project targeting remote staging APIs at test-auth.ysbpack.com and test-platform.ysbpack.com. Use credentials from .env if needed. Focus on CRM API endpoints: login, create lead, query lead, claim, assign, move public sea, activity record.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-HMwhJRp33hAPtxacBF5uR5Vr9iad_VEaeBQYn7M6esiJJHbyCD3BevnVf7gv2iPNIbaKJRfvBCLUXfkMkUKtRvZCcRSYArHRozLHRelmnX1zFN_91jXiWYNgBz9CZlTrnME"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "enabled": true,
+  "username": "your_login_name",
+  "password": "your_password",
+  "launch_wait_seconds": 5,
+  "post_login_wait_seconds": 8,
+  "steps": [
+    {
+      "action": "tap",
+      "selector": {
+        "text_contains": "账号"
+      },
+      "timeout_seconds": 10
+    },
+    {
+      "action": "input",
+      "value": "${username}"
+    },
+    {
+      "action": "tap",
+      "selector": {
+        "text_contains": "密码"
+      },
+      "timeout_seconds": 10
+    },
+    {
+      "action": "input",
+      "value": "${password}"
+    },
+    {
+      "action": "tap",
+      "selector": {
+        "text": "登录"
+      },
+      "timeout_seconds": 10
+    }
+  ],
+  "success_selector": {
+    "text_contains": "首页"
+  }
+}

@@ -1,0 +1,76 @@
+// EPAK 英文商城 UI 巡检 — 建议在 Jenkins 中单独建 Pipeline Job，Script Path 填此文件
+pipeline {
+    agent any
+
+    triggers {
+        cron('H/30 * * * *')
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SEND_EMAIL_REPORT',
+            defaultValue: true,
+            description: '执行结束后发送邮件（需在 Jenkins 配置 EMAIL_* 环境变量或 Credentials）'
+        )
+        booleanParam(
+            name: 'INSTALL_PLAYWRIGHT_BROWSER',
+            defaultValue: true,
+            description: '首次或浏览器缺失时安装 Chromium（已安装可关闭以加快构建）'
+        )
+    }
+
+    environment {
+        ESB_UI_HEADLESS = 'true'
+        EPAK_UI_REPORT_DIR = "${WORKSPACE}/reports/ui/epak"
+    }
+
+    stages {
+        stage('Install Python deps') {
+            steps {
+                bat 'python -m pip install -r requirements.txt'
+            }
+        }
+
+        stage('Install Playwright Chromium') {
+            when {
+                expression { return params.INSTALL_PLAYWRIGHT_BROWSER }
+            }
+            steps {
+                bat 'python -m playwright install chromium'
+            }
+        }
+
+        stage('EPAK mall UI check') {
+            steps {
+                script {
+                    def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
+                    bat """
+                        if not exist reports\\junit mkdir reports\\junit
+                        pytest tests/test_epak_mall_ui.py -m epak -s -v ^
+                            --junitxml=reports/junit/epak-ui.xml ^
+                            ${emailArg}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+            junit allowEmptyResults: true, testResults: 'reports/junit/epak-ui.xml'
+        }
+        success {
+            echo 'EPAK UI 巡检通过，报告已归档至 Build Artifacts'
+        }
+        failure {
+            echo 'EPAK UI 巡检失败，请查看 Console、reports/ui/epak 截图与 report.json'
+        }
+    }
+}
