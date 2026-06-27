@@ -10,6 +10,12 @@ pipeline {
         // 读取Secret Text凭证，ID对应上面创建的LOGIN_PHONE
         LOGIN_PHONE = credentials('LOGIN_PHONE')
         LOGIN_PASSWORD_ENCRYPTED = credentials('LOGIN_PASSWORD_ENCRYPTED')
+        // 新增邮件环境变量
+        EMAIL_SMTP_HOST = credentials('EMAIL_SMTP_HOST')
+        EMAIL_FROM = credentials('EMAIL_FROM')
+        EMAIL_USERNAME = credentials('EMAIL_USERNAME')
+        EMAIL_TO = credentials('EMAIL_TO')
+        EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
         }
 
     options {
