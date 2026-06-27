@@ -1,7 +1,14 @@
 // CRM API 回归（含异常场景）— Jenkins 单独建 Job，Script Path 填此文件
 pipeline {
     agent any
-
+ environment 
+{
+        // 读取Secret Text凭证，ID对应上面创建的LOGIN_PHONE
+        LOGIN_PHONE 
+= credentials('LOGIN_PHONE')
+        LOGIN_PASSWORD_ENCRYPTED 
+= credentials('LOGIN_PASSWORD_ENCRYPTED')
+    }
     triggers {
         cron('H 3 * * *')
     }
