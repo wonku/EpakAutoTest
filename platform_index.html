@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/jpeg+xml" href="/src/logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="renderer" content="webkit">
+    <meta name="force-rendering" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="stylesheet" global href="https://tj-prod.oss-cn-hangzhou.aliyuncs.com/npm/js/antd/antd.min.css"/>
+    <title>loading...</title>
+<script src="/externals/react.production.min.js" global></script>
+<script src="/externals/react-dom.production.min.js" global></script>
+<script src="/externals/bizCharts.min.js" global></script>
+    <script type="module" crossorigin src="/assets/index.067fbb4d.js"></script>
+    <link rel="stylesheet" href="/assets/index.fc5dba95.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    
+  </body>
+  <script>
+    var staticMap = {
+      link: "href",
+      script: "src",
+    };
+    function showAlert(message) {
+      var alertBox = document.createElement('div');
+      alertBox.style.position = 'fixed';
+      alertBox.style.top = '10%';
+      alertBox.style.left = '46%';
+      alertBox.style.zIndex = '1000';
+      alertBox.textContent = message;
+      document.body.appendChild(alertBox);
+      var timer = setTimeout(() => {
+        document.body.removeChild(alertBox)
+        clearTimeout(timer)
+      }, 3000)
+    }
+    var loadingTime = 0; //加载时间
+    var setTimer = setInterval(() => {
+      loadingTime++
+      if (loadingTime > 10) {
+        showAlert('网络不太好，请稍等...');
+        clearInterval(setTimer)
+        setTimer = null
+      }
+    }, 1000)
+    window.onload = function(e) {
+      clearInterval(setTimer)
+      setTimer = null
+    };
+    window.onCdnError = function (e) {
+      const nodeName = e.nodeName.toLowerCase();
+      const srcName = staticMap[nodeName];
+      if (!srcName) {
+        return;
+      }
+      // 获取当前加载失败的链接
+      let link = e[srcName];
+      if (!link) return;
+      console.log('cdn文件加载失败', link)
+      // cdn替换成本地路径
+      var linkList = link.split('/')
+      var fileName = linkList[linkList.length - 1]
+      var localLink = '/externals/' + fileName
+
+      // 创建script或者link标签，插入到head中
+      const head = document.head || document.getElementsByTagName("head")[0];
+      const el = document.createElement(nodeName);
+      if (el === "link") {
+        el.rel = "stylesheet";
+      }
+      el[srcName] = localLink;
+      el.onerror = function () {
+        window.onCdnError(el);
+      };
+      el.setAttribute("crossorigin", "anonymous");
+      head.appendChild(el);
+    };
+  </script>
+</html>

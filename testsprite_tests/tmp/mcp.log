@@ -1,0 +1,65 @@
+{"timestamp":"2026-06-18T07:26:03.428Z","level":"info","message":"Tool invocation started","correlationId":"76ea0557-6895-4593-8046-e49b9aaaa0c7","tool":"testsprite_check_account_info"}
+{"timestamp":"2026-06-18T07:26:05.096Z","level":"info","message":"Tool invocation completed","correlationId":"76ea0557-6895-4593-8046-e49b9aaaa0c7","tool":"testsprite_check_account_info"}
+{"timestamp":"2026-06-18T07:31:24.327Z","level":"info","message":"Tool invocation started","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:24.586Z","level":"info","message":"Scope determined","correlationId":"5b0732b8-f0bb-426d-b7fd-048fa99d2ace","tool":"testsprite_generate_code_summary","context":{"scope":"codebase","type":"backend"}}
+{"timestamp":"2026-06-18T07:31:24.328Z","level":"debug","message":"Initialization params","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap","context":{"localPort":443,"type":"backend","projectPath":"e:\\cursor\\Pyautotest","testScope":"codebase"}}
+{"timestamp":"2026-06-18T07:31:24.332Z","level":"info","message":"HTTP server started successfully on port 64071","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:24.335Z","level":"debug","message":"Code analyze params","correlationId":"5b0732b8-f0bb-426d-b7fd-048fa99d2ace","tool":"testsprite_generate_code_summary","context":{"projectRootPath":"e:\\cursor\\Pyautotest"}}
+{"timestamp":"2026-06-18T07:31:24.330Z","level":"info","message":"Attempting to start server (attempt 1/3)","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:24.338Z","level":"info","message":"HTTP server started, config saved","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:24.334Z","level":"info","message":"Tool invocation started","correlationId":"5b0732b8-f0bb-426d-b7fd-048fa99d2ace","tool":"testsprite_generate_code_summary"}
+{"timestamp":"2026-06-18T07:31:24.587Z","level":"info","message":"Tool invocation completed","correlationId":"5b0732b8-f0bb-426d-b7fd-048fa99d2ace","tool":"testsprite_generate_code_summary"}
+{"timestamp":"2026-06-18T07:31:26.368Z","level":"info","message":"GET /init?project_path=e%3A%5Ccursor%5CPyautotest&default_type=backend 200 6ms","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:26.488Z","level":"info","message":"GET /api/config?project_path=e%3A%5Ccursor%5CPyautotest 200 8ms","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-18T07:31:26.571Z","level":"info","message":"GET /favicon.ico 404 2ms","correlationId":"cb780ea5-f918-4470-bb23-4025c9b426fd","tool":"testsprite_bootstrap"}
+{"timestamp":"2026-06-22T08:26:22.658Z","level":"info","message":"Tool invocation started","correlationId":"03bd8ac6-5eb2-49d4-b3c3-c14fba7fa20b","tool":"testsprite_check_account_info"}
+{"timestamp":"2026-06-22T08:26:22.740Z","level":"debug","message":"Code analyze params","correlationId":"3ae3236d-2295-46eb-a0d3-bd8d8b00a812","tool":"testsprite_generate_code_summary","context":{"projectRootPath":"e:\\cursor\\Pyautotest"}}
+{"timestamp":"2026-06-22T08:26:22.744Z","level":"info","message":"Scope determined","correlationId":"3ae3236d-2295-46eb-a0d3-bd8d8b00a812","tool":"testsprite_generate_code_summary","context":{"scope":"codebase","type":"backend"}}
+{"timestamp":"2026-06-22T08:26:22.739Z","level":"info","message":"Tool invocation started","correlationId":"3ae3236d-2295-46eb-a0d3-bd8d8b00a812","tool":"testsprite_generate_code_summary"}
+{"timestamp":"2026-06-22T08:26:22.746Z","level":"info","message":"Tool invocation completed","correlationId":"3ae3236d-2295-46eb-a0d3-bd8d8b00a812","tool":"testsprite_generate_code_summary"}
+{"timestamp":"2026-06-22T08:26:24.488Z","level":"info","message":"Tool invocation completed","correlationId":"03bd8ac6-5eb2-49d4-b3c3-c14fba7fa20b","tool":"testsprite_check_account_info"}
+{"timestamp":"2026-06-22T08:27:29.243Z","level":"debug","message":"Generate standard PRD params","correlationId":"6ed0240f-cddd-4f5a-906f-6f2903f5d86b","tool":"testsprite_generate_standardized_prd","context":{"projectPath":"e:\\cursor\\Pyautotest"}}
+{"timestamp":"2026-06-22T08:27:29.246Z","level":"error","message":"Tool invocation failed: Error reading PRD files: Error: ENOENT: no such file or directory, scandir 'e:\\cursor\\Pyautotest\\testsprite_tests\\tmp\\prd_files'","correlationId":"6ed0240f-cddd-4f5a-906f-6f2903f5d86b","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:27:29.241Z","level":"info","message":"Tool invocation started","correlationId":"6ed0240f-cddd-4f5a-906f-6f2903f5d86b","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:27:29.246Z","level":"error","message":"Error reading PRD files: Error: ENOENT: no such file or directory, scandir 'e:\\cursor\\Pyautotest\\testsprite_tests\\tmp\\prd_files'","correlationId":"6ed0240f-cddd-4f5a-906f-6f2903f5d86b","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:27:55.567Z","level":"debug","message":"Generate standard PRD params","correlationId":"6c28514b-f03b-4dde-af75-974fd4f02e49","tool":"testsprite_generate_standardized_prd","context":{"projectPath":"e:\\cursor\\Pyautotest"}}
+{"timestamp":"2026-06-22T08:27:55.566Z","level":"info","message":"Tool invocation started","correlationId":"6c28514b-f03b-4dde-af75-974fd4f02e49","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:27:55.568Z","level":"info","message":"PRD files loaded","correlationId":"6c28514b-f03b-4dde-af75-974fd4f02e49","tool":"testsprite_generate_standardized_prd","context":{"fileCount":1}}
+{"timestamp":"2026-06-22T08:28:03.946Z","level":"info","message":"Standard PRD generated successfully","correlationId":"6c28514b-f03b-4dde-af75-974fd4f02e49","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:28:03.947Z","level":"info","message":"Tool invocation completed","correlationId":"6c28514b-f03b-4dde-af75-974fd4f02e49","tool":"testsprite_generate_standardized_prd"}
+{"timestamp":"2026-06-22T08:28:14.695Z","level":"info","message":"Tool invocation started","correlationId":"c8850b05-694c-4276-8320-517a721e6469","tool":"testsprite_generate_backend_test_plan"}
+{"timestamp":"2026-06-22T08:28:14.696Z","level":"debug","message":"Generate backend test plan params","correlationId":"c8850b05-694c-4276-8320-517a721e6469","tool":"testsprite_generate_backend_test_plan","context":{"projectPath":"e:\\cursor\\Pyautotest"}}
+{"timestamp":"2026-06-22T08:28:24.400Z","level":"info","message":"Backend test plan generated successfully","correlationId":"c8850b05-694c-4276-8320-517a721e6469","tool":"testsprite_generate_backend_test_plan"}
+{"timestamp":"2026-06-22T08:28:24.402Z","level":"info","message":"Tool invocation completed","correlationId":"c8850b05-694c-4276-8320-517a721e6469","tool":"testsprite_generate_backend_test_plan"}
+{"timestamp":"2026-06-22T08:28:34.346Z","level":"info","message":"Tool invocation started","correlationId":"ce9a6777-1cfa-4e96-872b-02f10de26373","tool":"testsprite_generate_code_and_execute"}
+{"timestamp":"2026-06-22T08:28:34.352Z","level":"info","message":"Tool invocation completed","correlationId":"ce9a6777-1cfa-4e96-872b-02f10de26373","tool":"testsprite_generate_code_and_execute"}
+{"timestamp":"2026-06-22T08:29:00.913Z","level":"debug","message":"Generate code and execute params","context":{"projectName":"Pyautotest","projectPath":"e:\\cursor\\Pyautotest","testIds":[],"serverMode":"development"}}
+{"timestamp":"2026-06-22T08:29:00.941Z","level":"error","message":"checkPortListening tcp error: 443 localhost\nAggregateError"}
+{"timestamp":"2026-06-22T08:29:01.451Z","level":"error","message":"checkPortListening tcp error: 443 localhost\nAggregateError"}
+{"timestamp":"2026-06-22T08:29:01.963Z","level":"error","message":"checkPortListening tcp error: 443 localhost\nAggregateError"}
+{"timestamp":"2026-06-22T08:29:02.480Z","level":"error","message":"checkPortListening tcp error: 443 localhost\nAggregateError"}
+{"timestamp":"2026-06-22T08:29:02.992Z","level":"info","message":"checkPortListening tcp failed, trying http fallback: 443 localhost"}
+{"timestamp":"2026-06-22T08:29:03.002Z","level":"error","message":"checkPortListening failed (tcp + http): 443 localhost"}
+{"timestamp":"2026-06-22T08:29:03.003Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-06-22T08:29:03.006Z","level":"info","message":"HTTP server started successfully on port 50391"}
+{"timestamp":"2026-06-22T08:29:03.002Z","level":"error","message":"checkPortListening http check failed: https://localhost:443/ TypeError: fetch failed"}
+{"timestamp":"2026-06-22T08:29:05.747Z","level":"info","message":"[TunnelClient] Control websocket connected","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:05.750Z","level":"info","message":"Verifying tunnel connectivity..."}
+{"timestamp":"2026-06-22T08:29:05.952Z","level":"debug","message":"[TunnelClient] Control message: {\"type\":\"Ack\"}","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:05.749Z","level":"info","message":"[TunnelClient] Tunnel client started","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:05.751Z","level":"info","message":"Tunnel probe attempt 1/2 through proxy.tun.testsprite.com:9090 to http://localhost:443/..."}
+{"timestamp":"2026-06-22T08:29:05.750Z","level":"info","message":"proxy: [REDACTED]proxy.tun.testsprite.com:9090"}
+{"timestamp":"2026-06-22T08:29:06.614Z","level":"debug","message":"[TunnelClient] Control message: {\"type\":\"RequestTunnel\",\"payload\":{\"tunnel_connection_id\":\"tunnel_VJBQq0MXpQzrBLhK\",\"target_host\":\"localhost\",\"target_port\":443}}","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:06.615Z","level":"debug","message":"[TunnelClient] RequestTunnel received: tunnel_VJBQq0MXpQzrBLhK","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:06.617Z","level":"info","message":"[TunnelClient] Starting tunnel runtime on demand: tunnel_VJBQq0MXpQzrBLhK","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:08.315Z","level":"info","message":"[TunnelClient] Tunnel tcp connected: tunnel_VJBQq0MXpQzrBLhK","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:08.747Z","level":"info","message":"[TunnelClient] Open request 51677d66-2056-435b-8c9c-ff8f2f294f59 (proxy_sefXGmSd2kk1ObwK, tunnel_VJBQq0MXpQzrBLhK, stream 2): localhost:443","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:08.753Z","level":"warn","message":"[TunnelClient] Target connect failed: Target connect failed for localhost:443: ","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:09.018Z","level":"warn","message":"Tunnel probe attempt 1 failed: socket hang up — retrying in 3s..."}
+{"timestamp":"2026-06-22T08:29:08.746Z","level":"debug","message":"[TunnelClient] Stream open: 51677d66-2056-435b-8c9c-ff8f2f294f59 (proxy_sefXGmSd2kk1ObwK, tunnel_VJBQq0MXpQzrBLhK, stream 2)","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:12.034Z","level":"info","message":"Tunnel probe attempt 2/2 through proxy.tun.testsprite.com:9090 to http://localhost:443/..."}
+{"timestamp":"2026-06-22T08:29:13.398Z","level":"info","message":"[TunnelClient] Open request 74e1b38b-ff40-46d4-8a1b-54c075948a17 (proxy_E6lswc6DMGJaHsLV, tunnel_VJBQq0MXpQzrBLhK, stream 4): localhost:443","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:13.404Z","level":"warn","message":"[TunnelClient] Target connect failed: Target connect failed for localhost:443: ","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:13.397Z","level":"debug","message":"[TunnelClient] Stream open: 74e1b38b-ff40-46d4-8a1b-54c075948a17 (proxy_E6lswc6DMGJaHsLV, tunnel_VJBQq0MXpQzrBLhK, stream 4)","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-06-22T08:29:13.840Z","level":"error","message":"Failed to generate and execute tests: Error: socket hang up\n    at Socket.socketOnEnd (node:_http_client:617:25)\n    at Socket.emit (node:events:521:24)\n    at endReadableNT (node:internal/streams/readable:1729:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)","context":{}}
+{"timestamp":"2026-06-22T08:29:13.845Z","level":"debug","message":"[TunnelClient] Yamux session closed: tunnel_VJBQq0MXpQzrBLhK"}

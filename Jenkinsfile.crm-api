@@ -1,0 +1,65 @@
+// CRM API 回归（含异常场景）— Jenkins 单独建 Job，Script Path 填此文件
+pipeline {
+    agent any
+
+    triggers {
+        cron('H 3 * * *')
+    }
+
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SEND_EMAIL_REPORT',
+            defaultValue: true,
+            description: '执行结束后发送邮件（需在 Jenkins 配置 EMAIL_* 环境变量或 Credentials）'
+        )
+        booleanParam(
+            name: 'INCLUDE_NEGATIVE',
+            defaultValue: true,
+            description: '是否包含 tests/test_api_negative.py 异常场景用例'
+        )
+    }
+
+    stages {
+        stage('Install Python deps') {
+            steps {
+                bat 'python -m pip install -r requirements.txt'
+            }
+        }
+
+        stage('CRM API regression') {
+            steps {
+                script {
+                    def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
+                    def testPath = params.INCLUDE_NEGATIVE
+                        ? 'tests/test_api_*.py'
+                        : 'tests/test_api_create_lead.py tests/test_api_claim_lead.py tests/test_api_assign_lead.py tests/test_api_move_lead_public_sea.py tests/test_api_create_lead_activity.py tests/test_api_create_lead_with_activity.py'
+                    bat """
+                        if not exist reports\\junit mkdir reports\\junit
+                        pytest ${testPath} -v ^
+                            --junitxml=reports/junit/crm-api.xml ^
+                            ${emailArg}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+            junit allowEmptyResults: true, testResults: 'reports/junit/crm-api.xml'
+        }
+        success {
+            echo 'CRM API 回归通过，报告已归档至 Build Artifacts'
+        }
+        failure {
+            echo 'CRM API 回归失败，请查看 Console、reports/junit/crm-api.xml 与 Allure 结果'
+        }
+    }
+}

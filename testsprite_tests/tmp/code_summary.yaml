@@ -1,0 +1,166 @@
+version: "2"
+type: backend
+tech_stack:
+  - Python
+  - Pytest
+  - Playwright
+  - Requests
+  - Allure
+  - Appium
+features:
+  - name: Member Authentication API
+    description: Login via encrypted password to obtain token, memberId and userId for subsequent CRM API calls
+    files:
+      - api/services/auth_service.py
+      - api/client.py
+      - config/settings.py
+      - tests/test_login_token.py
+    endpoints:
+      - method: POST
+        path: /api/member/login
+        description: Authenticate user with account and encrypted password, returns token and user info
+        auth_required: false
+        request_schema:
+          body:
+            account: string
+            password: string
+        response_schema:
+          "200":
+            code: number
+            data:
+              token: string
+              memberId: number
+              userId: number
+    depends_on: []
+  - name: CRM Lead Management API
+    description: Create, query, claim, assign and move sales leads in CRM 2.0 platform
+    files:
+      - api/services/crm_lead_service.py
+      - tests/test_api_create_lead.py
+      - tests/test_api_claim_lead.py
+      - tests/test_api_assign_lead.py
+      - tests/test_api_move_lead_public_sea.py
+    endpoints:
+      - method: POST
+        path: /api/crm/lead/saveOrUpdate
+        description: Create or update a sales lead
+        auth_required: true
+        request_schema:
+          body:
+            name: string
+            phone: string
+            email: string
+            countryCode: string
+            followUserId: number
+        response_schema:
+          "200":
+            code: number
+            data: object
+      - method: POST
+        path: /api/crm/lead/page
+        description: Paginated query of sales leads by phone or name
+        auth_required: true
+        request_schema:
+          body:
+            pageNum: number
+            pageSize: number
+            phone: string
+            name: string
+        response_schema:
+          "200":
+            code: number
+            data:
+              data: array
+      - method: POST
+        path: /api/crm/lead/claimLead
+        description: Claim leads from public sea
+        auth_required: true
+        request_schema:
+          body:
+            leadIds: array
+        response_schema:
+          "200":
+            code: number
+      - method: POST
+        path: /api/crm/lead/assign
+        description: Assign leads to a new follow-up user
+        auth_required: true
+        request_schema:
+          body:
+            leadIds: array
+            newFollowUserId: number
+            newFollowUserName: string
+        response_schema:
+          "200":
+            code: number
+      - method: POST
+        path: /api/crm/lead/movePublicSea
+        description: Move leads to public sea
+        auth_required: true
+        request_schema:
+          body:
+            leadIds: array
+            publicSeaReasonCode: number
+            remark: string
+        response_schema:
+          "200":
+            code: number
+    depends_on:
+      - Member Authentication API
+  - name: CRM Activity Record API
+    description: Create activity records linked to sales leads
+    files:
+      - api/services/crm_lead_service.py
+      - tests/test_api_create_lead_activity.py
+      - tests/test_api_create_lead_with_activity.py
+    endpoints:
+      - method: POST
+        path: /api/crm/common/activity/saveOrUpdate
+        description: Create or update an activity record for a lead
+        auth_required: true
+        request_schema:
+          body:
+            activityTypeCode: number
+            activityRecordTypeCode: number
+            relationId: number
+            activityContent: string
+        response_schema:
+          "200":
+            code: number
+    depends_on:
+      - CRM Lead Management API
+  - name: CRM Common Data API
+    description: Shared reference data endpoints used by lead creation flows
+    files:
+      - api/services/crm_lead_service.py
+      - config/settings.py
+    endpoints:
+      - method: GET
+        path: /api/crm/common/country/list
+        description: List countries for lead countryCode resolution
+        auth_required: true
+        response_schema:
+          "200":
+            code: number
+            data:
+              data: array
+      - method: GET
+        path: /api/member/user/effective/list
+        description: List effective users for lead assignment
+        auth_required: true
+        response_schema:
+          "200":
+            code: number
+            data: array
+    depends_on:
+      - Member Authentication API
+known_limitations:
+  - issue: This repository is a test automation framework, not a deployable backend service; APIs target remote staging hosts (test-auth.ysbpack.com, test-platform.ysbpack.com)
+    location: config/settings.py
+    impact: Tests require valid credentials in .env and network access to external staging environment
+  - issue: UI tests use Playwright against production/staging web malls and cannot run without browser credentials
+    location: tests/test_esbao_mall_ui.py
+    impact: Frontend UI flows are excluded from backend API test scope
+  - issue: Mobile tests require local Android device/emulator and Appium server
+    location: tests/mobile/
+    impact: Mobile monkey and exploration tests are not suitable for HTTP API-only testing

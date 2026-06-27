@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.venv/
+reports/
+playwright/.cache/
+.env
+*.apk
+config/mobile_login.json
+
+testsprite_tests\tmp\config.json
+Pyautotest/pw-browsers/
+pw-browsers/
+Pyautotest/pw-browsers/
+pw-browsers/

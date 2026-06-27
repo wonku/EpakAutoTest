@@ -1,0 +1,122 @@
+{
+  "members": [],
+  "scenarios": [
+    {
+      "id": "CUR-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "当前持有",
+      "note": "EMP-056 / 当前仍由该员工负责=是"
+    },
+    {
+      "id": "CUR-002",
+      "owner": "甲",
+      "activities": 0,
+      "end_type": "当前持有",
+      "note": "EMP-013 仍持有未首跟"
+    },
+    {
+      "id": "ASN-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "分配",
+      "transfer_to": "乙",
+      "note": "EMP-057 转出给乙"
+    },
+    {
+      "id": "ASN-002",
+      "owner": "甲",
+      "activities": 0,
+      "end_type": "分配",
+      "transfer_to": "乙",
+      "note": "EMP-014 已结束未首跟"
+    },
+    {
+      "id": "MAN-POOL-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "主动移入公海",
+      "note": "EMP-058 操作人=甲"
+    },
+    {
+      "id": "AUTO-POOL-001",
+      "owner": "甲",
+      "activities": 0,
+      "end_type": "系统回收",
+      "note": "EMP-059 等待超期后系统回收触发"
+    },
+    {
+      "id": "WIN-CUST-001",
+      "owner": "甲",
+      "activities": 2,
+      "end_type": "转客户",
+      "note": "EMP-060 在甲名下转客户"
+    },
+    {
+      "id": "VOID-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "作废",
+      "note": "EMP-061 在甲名下作废"
+    },
+    {
+      "id": "MULTI-CYCLE-001",
+      "owner": "丙",
+      "activities": 1,
+      "end_type": "分配",
+      "transfer_to": "甲",
+      "note": "EMP-054 同一线索多周期 - 第一段：丙→甲"
+    },
+    {
+      "id": "MULTI-CYCLE-002",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "分配",
+      "transfer_to": "丙",
+      "reuse_lead_of": "MULTI-CYCLE-001",
+      "note": "EMP-054 第二段：甲→丙"
+    },
+    {
+      "id": "MULTI-USER-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "分配",
+      "transfer_to": "乙",
+      "note": "EMP-055 不同员工承接同一线索 - 第一段"
+    },
+    {
+      "id": "MULTI-USER-002",
+      "owner": "乙",
+      "activities": 1,
+      "end_type": "分配",
+      "transfer_to": "丙",
+      "reuse_lead_of": "MULTI-USER-001",
+      "note": "EMP-055 第二段"
+    },
+    {
+      "id": "MULTI-USER-003",
+      "owner": "丙",
+      "activities": 0,
+      "end_type": "当前持有",
+      "reuse_lead_of": "MULTI-USER-001",
+      "note": "EMP-055 第三段（当前持有）"
+    },
+    {
+      "id": "SPAN-001",
+      "owner": "甲",
+      "activities": 1,
+      "end_type": "当前持有",
+      "back_days_for_assign": 365,
+      "note": "EMP-052 责任周期跨筛选时段"
+    },
+    {
+      "id": "OUT-001",
+      "owner": "甲",
+      "activities": 0,
+      "end_type": "作废",
+      "back_days_for_assign": 400,
+      "void_after_days": 380,
+      "note": "EMP-053 完全在筛选时段之前"
+    }
+  ]
+}
