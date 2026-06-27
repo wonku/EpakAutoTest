@@ -46,7 +46,7 @@ def send_pytest_email_report(
     config.validate()
 
     status = "PASS" if summary.get("exitstatus") == 0 else "FAIL"
-    label = report_label or summary.get("report_label") or "Monkey Test"
+    label = report_label or summary.get("report_label") or "Pytest"
     subject = f"{config.subject_prefix} {label} {status}"
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -115,6 +115,16 @@ def latest_appium_attachments(appium_report_dir: Path, summary_path: Path) -> li
         if path.exists():
             attachments.append(path)
     return attachments
+
+
+def latest_api_attachments(summary_path: Path, junit_dir: Path | None = None) -> list[Path]:
+    attachments = [summary_path]
+    junit_root = junit_dir or Path("reports/junit")
+    if junit_root.exists():
+        for path in sorted(junit_root.glob("*.xml"), key=lambda item: item.stat().st_mtime, reverse=True):
+            attachments.append(path)
+            break
+    return [path for path in attachments if path.exists()]
 
 
 def latest_mobile_attachments(
@@ -206,10 +216,19 @@ def _format_ui_report_section(label: str, report: dict) -> list[str]:
     return lines
 
 
+def _report_intro(summary: dict) -> str:
+    kind = summary.get("report_kind", "")
+    if kind == "api":
+        return "CRM API 自动化回归已执行完成。"
+    if kind in {"monkey", "appium", "mobile"}:
+        return "移动端自动化测试已执行完成。"
+    return "自动化测试已执行完成。"
+
+
 def _build_body(summary: dict) -> str:
     stats = summary.get("stats", {})
     lines = [
-        "移动端自动化测试已执行完成。",
+        _report_intro(summary),
         "",
         f"状态: {'通过' if summary.get('exitstatus') == 0 else '失败'}",
         f"开始时间: {summary.get('started_at', '')}",

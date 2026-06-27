@@ -24,6 +24,7 @@ from config.settings import (
 from utils.email_report import (
     EmailReportConfig,
     build_ui_inspection_email_body,
+    latest_api_attachments,
     latest_mobile_attachments,
     send_pytest_email_report,
 )
@@ -37,6 +38,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="Send email report after pytest session finishes.",
+    )
+    parser.addoption(
+        "--report-label",
+        action="store",
+        default=None,
+        help="Email report subject label (e.g. 'CRM API 回归'). Auto-detected if omitted.",
     )
 
 
@@ -251,9 +258,59 @@ def pytest_sessionfinish(session, exitstatus):
         _send_email_report(summary_path, session, exitstatus)
 
 
+def _normalize_nodeid(nodeid: str) -> str:
+    return nodeid.replace("\\", "/")
+
+
+def _infer_report_context(session) -> dict:
+    cli_label = session.config.getoption("--report-label")
+    if cli_label:
+        return {
+            "report_label": cli_label.strip(),
+            "report_kind": "custom",
+            "report_dir": "reports",
+        }
+    if settings.EMAIL_REPORT_LABEL:
+        return {
+            "report_label": settings.EMAIL_REPORT_LABEL,
+            "report_kind": "custom",
+            "report_dir": "reports",
+        }
+
+    nodeids = [_normalize_nodeid(item.nodeid) for item in getattr(session, "items", [])]
+    api_tests = [nodeid for nodeid in nodeids if "/test_api_" in nodeid]
+    monkey_tests = [nodeid for nodeid in nodeids if "test_monkey" in nodeid]
+    appium_tests = [nodeid for nodeid in nodeids if "test_appium" in nodeid]
+
+    if api_tests and not monkey_tests and not appium_tests:
+        return {
+            "report_label": "CRM API 回归",
+            "report_kind": "api",
+            "report_dir": "reports/junit",
+        }
+    if monkey_tests:
+        return {
+            "report_label": "Monkey Test",
+            "report_kind": "monkey",
+            "report_dir": str(Path(settings.MONKEY_REPORT_DIR)),
+        }
+    if appium_tests:
+        return {
+            "report_label": "Appium Explore",
+            "report_kind": "appium",
+            "report_dir": str(Path(settings.APPIUM_REPORT_DIR)),
+        }
+    return {
+        "report_label": "Pytest",
+        "report_kind": "generic",
+        "report_dir": "reports",
+    }
+
+
 def _write_test_summary(session, exitstatus) -> Path:
     started_at = getattr(session.config, "_session_started_at", datetime.now(timezone.utc))
     finished_at = datetime.now(timezone.utc)
+    report_context = _infer_report_context(session)
     summary_path = Path("reports/test-summary-last.json")
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -262,7 +319,9 @@ def _write_test_summary(session, exitstatus) -> Path:
         "finished_at": finished_at.isoformat(),
         "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
         "stats": getattr(session.config, "_test_stats", {}),
-        "report_dir": str(Path(settings.MONKEY_REPORT_DIR)),
+        "report_label": report_context["report_label"],
+        "report_kind": report_context["report_kind"],
+        "report_dir": report_context["report_dir"],
         "allure_results_dir": str(Path("reports/allure-results")),
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -292,11 +351,18 @@ def _send_email_report(summary_path: Path, session, exitstatus) -> None:
             send_ui_report_email(session.config, label, report_path)
         return
 
-    attachments = latest_mobile_attachments(
-        Path(settings.MONKEY_REPORT_DIR),
-        Path(settings.APPIUM_REPORT_DIR),
-        summary_path,
-    )
+    report_kind = summary.get("report_kind", "")
+    if report_kind == "api":
+        attachments = latest_api_attachments(summary_path)
+    elif report_kind in {"monkey", "appium", "mobile"}:
+        attachments = latest_mobile_attachments(
+            Path(settings.MONKEY_REPORT_DIR),
+            Path(settings.APPIUM_REPORT_DIR),
+            summary_path,
+        )
+    else:
+        attachments = [summary_path]
+
     try:
         send_pytest_email_report(config, summary, attachments)
     except Exception as exc:

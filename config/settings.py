@@ -165,6 +165,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
 EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USERNAME).strip()
 EMAIL_TO = [item.strip() for item in os.getenv("EMAIL_TO", "").split(",") if item.strip()]
 EMAIL_SUBJECT_PREFIX = os.getenv("EMAIL_SUBJECT_PREFIX", "[Pyautotest]").strip()
+EMAIL_REPORT_LABEL = os.getenv("EMAIL_REPORT_LABEL", "").strip()
 EMAIL_ATTACH_LOGS = os.getenv("EMAIL_ATTACH_LOGS", "true").lower() == "true"
 EMAIL_MAX_ATTACHMENT_MB = int(os.getenv("EMAIL_MAX_ATTACHMENT_MB", "10"))
 

@@ -27,10 +27,13 @@ pipeline {
     }
 
     environment {
+        EMAIL_SMTP_HOST = credentials('EMAIL_SMTP_HOST')
+        EMAIL_FROM = credentials('EMAIL_FROM')
+        EMAIL_USERNAME = credentials('EMAIL_USERNAME')
+        EMAIL_TO = credentials('EMAIL_TO')
+        EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
         ESB_UI_HEADLESS = 'true'
         ESB_UI_REPORT_DIR = "${WORKSPACE}/reports/ui/esbao"
-        // 邮件：在 Job → Configure → Environment variables 或 Credentials 中配置，勿提交密码到 Git
-        // EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_FROM, EMAIL_TO
     }
 
     stages {
