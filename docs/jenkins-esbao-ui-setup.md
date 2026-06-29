@@ -97,6 +97,7 @@ EMAIL_REPORT_ENABLED=true
 |------|------|
 | `playwright` 找不到浏览器 | 勾选 `INSTALL_PLAYWRIGHT_BROWSER` 或节点执行 `playwright install chromium` |
 | 邮件未发送 | 检查 Jenkins 环境变量 / Secret，`SEND_EMAIL_REPORT=true` |
+| `Page.goto: Timeout` / 登录页打不开 | Jenkins 节点需能访问 `auth.esbao.com` / `auth.epakgroup.com`；流水线已加 Network precheck；可加大 `MALL_UI_NAV_TIMEOUT_MS` |
 | 构建互抢浏览器 | 已 `disableConcurrentBuilds()`，同一 Job 不会并行 |
 | 只想改频率 | 修改 `Jenkinsfile.esbao-ui` 中 `cron('H/30 * * * *')`，例如每小时：`H * * * *` |
 

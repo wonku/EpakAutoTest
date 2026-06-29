@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from config import settings
 from pages.esbao_product_detail_page import EsbaoProductDetailPage
-from utils.base_page import BasePage
+from pages.mall.base import MallHomePageBase
 
 
-class EsbaoMallHomePage(BasePage):
+class EsbaoMallHomePage(MallHomePageBase):
     HOT_SECTION_TITLE = "热销爆款"
     HOT_PRODUCT_ITEM = ".carousel_item_3dcef7"
 
@@ -29,57 +27,17 @@ class EsbaoMallHomePage(BasePage):
         "包材原料",
     ]
 
-    def __init__(self, page: Page, home_url: str):
-        super().__init__(page)
-        self.home_url = home_url
-
     def assert_on_home(self) -> None:
         assert "esbao.com" in self.page.url, f"当前不在易食包商城首页: {self.page.url}"
 
-    def assert_key_modules_visible(self) -> dict[str, bool]:
-        body = self.page.content()
-        return {text: text in body for text in self.REQUIRED_TEXTS}
-
     def assert_full_page_loaded(self, scroll_pause_ms: int = 400) -> dict:
-        text_results = self.assert_key_modules_visible()
-        missing_texts = [name for name, ok in text_results.items() if not ok]
-        if missing_texts:
-            raise AssertionError(f"首页缺少关键文案: {', '.join(missing_texts)}")
-
-        scroll_height = self.page.evaluate("() => document.body.scrollHeight")
-        viewport_height = self.page.viewport_size["height"] if self.page.viewport_size else 900
-        step = max(viewport_height // 2, 300)
-        y = 0
-        while y <= scroll_height:
-            self.page.evaluate("(y) => window.scrollTo(0, y)", y)
-            self.page.wait_for_timeout(scroll_pause_ms)
-            y += step
-
-        self.page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
-        self.page.wait_for_timeout(max(scroll_pause_ms, 800))
-        self.page.evaluate("() => window.scrollTo(0, 0)")
-        self.page.wait_for_timeout(scroll_pause_ms)
-        self.page.evaluate(
-            "() => document.querySelector('[class*=\"commodity_classification\"]')?.scrollIntoView({block:'center'})"
+        return super().assert_full_page_loaded(
+            scroll_pause_ms,
+            scroll_target_js=(
+                "() => document.querySelector('[class*=\"commodity_classification\"]')"
+                "?.scrollIntoView({block:'center'})"
+            ),
         )
-        self.page.wait_for_timeout(scroll_pause_ms)
-        self.page.wait_for_timeout(settings.ESB_UI_IMAGE_SETTLE_MS)
-        self._wait_for_homepage_images(settings.ESB_UI_HOME_IMAGE_WAIT_MS)
-
-        image_stats = self._visible_image_stats()
-        broken_images = self._broken_images_in_document()
-        if broken_images:
-            sample = ", ".join(item.get("src", "")[:80] for item in broken_images[:3])
-            raise AssertionError(
-                f"首页存在未加载图片 {len(broken_images)} 张，示例: {sample}"
-            )
-
-        return {
-            "text_checks": text_results,
-            "image_stats": image_stats,
-            "scroll_height": scroll_height,
-            "broken_images": len(broken_images),
-        }
 
     def _prepare_hot_product_section(self) -> None:
         self.page.evaluate(
@@ -259,47 +217,4 @@ class EsbaoMallHomePage(BasePage):
         page.locator(f"text=/{pattern}/").first.wait_for(
             state="visible",
             timeout=settings.ESB_UI_DETAIL_READY_MS,
-        )
-
-    def _wait_for_homepage_images(self, max_wait_ms: int) -> None:
-        poll_ms = 500
-        elapsed = 0
-        while elapsed < max_wait_ms:
-            pending = self.page.evaluate(
-                """() => {
-                  const imgs = Array.from(document.images).filter(img => {
-                    const r = img.getBoundingClientRect();
-                    return r.width > 20 && r.height > 20;
-                  });
-                  return imgs.filter(img => !img.complete).length;
-                }"""
-            )
-            broken = self._broken_images_in_document()
-            if pending == 0 and not broken:
-                return
-            self.page.wait_for_timeout(poll_ms)
-            elapsed += poll_ms
-
-    def _visible_image_stats(self) -> dict:
-        return self.page.evaluate(
-            """() => {
-              const imgs = Array.from(document.images);
-              const visible = imgs.filter(img => {
-                const r = img.getBoundingClientRect();
-                return r.width > 20 && r.height > 20;
-              });
-              const broken = visible.filter(img => !img.complete || img.naturalWidth === 0);
-              return {total: imgs.length, visible: visible.length, broken: broken.length};
-            }"""
-        )
-
-    def _broken_images_in_document(self) -> list[dict]:
-        return self.page.evaluate(
-            """() => Array.from(document.images)
-              .filter(img => {
-                const r = img.getBoundingClientRect();
-                const hasSize = r.width > 20 && r.height > 20;
-                return hasSize && img.complete && img.naturalWidth === 0;
-              })
-              .map(img => ({src: img.currentSrc || img.src, alt: img.alt || ''}))"""
         )

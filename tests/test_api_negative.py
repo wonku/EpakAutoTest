@@ -29,7 +29,7 @@ from config.settings import (
     PLATFORM_BASE_URL,
 )
 
-pytestmark = pytest.mark.api_negative
+pytestmark = [pytest.mark.api, pytest.mark.api_negative]
 
 
 def _parse_json(resp) -> dict:

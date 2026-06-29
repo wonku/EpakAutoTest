@@ -42,11 +42,14 @@ def send_pytest_email_report(
     *,
     report_label: str | None = None,
     body: str | None = None,
-) -> None:
+) -> str:
     config.validate()
 
     status = "PASS" if summary.get("exitstatus") == 0 else "FAIL"
-    label = report_label or summary.get("report_label") or "Pytest"
+    raw_label = report_label or summary.get("report_label") or "Pytest"
+    from utils.email_config import resolve_email_subject_label
+
+    label = resolve_email_subject_label(raw_label.replace("UI巡检", "").strip() or raw_label)
     subject = f"{config.subject_prefix} {label} {status}"
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -54,21 +57,29 @@ def send_pytest_email_report(
     msg["To"] = ", ".join(config.recipients)
     msg.set_content(body or summary.get("email_body") or _build_body(summary))
 
+    attached = 0
     if config.attach_logs:
         for path in attachments:
+            if path.exists() and path.is_file():
+                max_bytes = config.max_attachment_mb * 1024 * 1024
+                if path.stat().st_size <= max_bytes:
+                    attached += 1
             _attach_file(msg, path, config.max_attachment_mb)
 
     if config.smtp_ssl:
         with smtplib.SMTP_SSL(config.smtp_host, config.smtp_port, timeout=30) as smtp:
             _login_if_needed(smtp, config)
-            smtp.send_message(msg)
-        return
+            rejected = smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=30) as smtp:
+            if config.smtp_starttls:
+                smtp.starttls()
+            _login_if_needed(smtp, config)
+            rejected = smtp.send_message(msg)
 
-    with smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=30) as smtp:
-        if config.smtp_starttls:
-            smtp.starttls()
-        _login_if_needed(smtp, config)
-        smtp.send_message(msg)
+    if rejected:
+        raise RuntimeError(f"SMTP rejected recipients: {rejected}")
+    return subject
 
 
 def latest_monkey_attachments(monkey_report_dir: Path, summary_path: Path) -> list[Path]:

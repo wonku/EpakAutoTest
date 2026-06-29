@@ -1,10 +1,20 @@
 import os
+import re
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def parse_email_recipients(raw: str | None = None) -> list[str]:
+    value = raw if raw is not None else os.getenv("EMAIL_TO", "")
+    if not value:
+        return []
+    parts = re.split(r"[,;]", value)
+    return [item.strip() for item in parts if item.strip()]
 
 BASE_URL = os.getenv("BASE_URL", "https://test-auth.ysbpack.com")
 LOGIN_PATH = os.getenv("LOGIN_PATH", "/user/login")
@@ -163,7 +173,7 @@ EMAIL_SMTP_STARTTLS = os.getenv("EMAIL_SMTP_STARTTLS", "false").lower() == "true
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "").strip()
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
 EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USERNAME).strip()
-EMAIL_TO = [item.strip() for item in os.getenv("EMAIL_TO", "").split(",") if item.strip()]
+EMAIL_TO = parse_email_recipients()
 EMAIL_SUBJECT_PREFIX = os.getenv("EMAIL_SUBJECT_PREFIX", "[Pyautotest]").strip()
 EMAIL_REPORT_LABEL = os.getenv("EMAIL_REPORT_LABEL", "").strip()
 EMAIL_ATTACH_LOGS = os.getenv("EMAIL_ATTACH_LOGS", "true").lower() == "true"
@@ -183,6 +193,10 @@ ESB_UI_IMAGE_SETTLE_MS = int(os.getenv("ESB_UI_IMAGE_SETTLE_MS", "3000"))
 ESB_UI_HOME_IMAGE_WAIT_MS = int(os.getenv("ESB_UI_HOME_IMAGE_WAIT_MS", "20000"))
 ESB_UI_DETAIL_READY_MS = int(os.getenv("ESB_UI_DETAIL_READY_MS", "60000"))
 ESB_UI_HOT_PRODUCT_KEYWORD = os.getenv("ESB_UI_HOT_PRODUCT_KEYWORD", "").strip()
+
+MALL_UI_NAV_TIMEOUT_MS = int(os.getenv("MALL_UI_NAV_TIMEOUT_MS", "120000"))
+MALL_UI_GOTO_WAIT_UNTIL = os.getenv("MALL_UI_GOTO_WAIT_UNTIL", "commit").strip()
+MALL_UI_GOTO_RETRIES = int(os.getenv("MALL_UI_GOTO_RETRIES", "3"))
 
 EPAK_AUTH_URL = os.getenv(
     "EPAK_AUTH_URL", "https://auth.epakgroup.com/user/login"

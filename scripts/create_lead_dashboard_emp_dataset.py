@@ -55,6 +55,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from api.auth_context import AuthContext
 from api.client import ApiClient
 from api.services.auth_service import AuthService
 from api.services.crm_lead_service import CrmLeadService
@@ -165,41 +166,37 @@ def _get_owner(members: list[MemberAuth], name: str) -> Optional[MemberAuth]:
 
 
 def _create_lead_for(svc: CrmLeadService, owner: MemberAuth) -> tuple[dict, int]:
-    payload = svc.build_random_lead_payload(
+    ctx = AuthContext(
         member_id=owner.member_id,
         user_id=owner.user_id,
         token=owner.token,
+    )
+    payload = svc.build_random_lead_payload(
+        ctx,
         follow_user_id=CRM_DEFAULT_FOLLOW_USER_ID,
         follow_user_name=CRM_DEFAULT_FOLLOW_USER_NAME,
     )
-    resp = svc.create_lead(
-        member_id=owner.member_id,
-        user_id=owner.user_id,
-        token=owner.token,
-        payload=payload,
-    )
+    resp = svc.create_lead(ctx, payload)
     relation_id = svc.resolve_relation_id_from_created_lead(
+        ctx,
         create_response=resp,
         create_payload=payload,
-        member_id=owner.member_id,
-        user_id=owner.user_id,
-        token=owner.token,
     )
     return payload, int(relation_id)
 
 
 def _create_activity(svc: CrmLeadService, owner: MemberAuth, relation_id: int) -> int:
+    ctx = AuthContext(
+        member_id=owner.member_id,
+        user_id=owner.user_id,
+        token=owner.token,
+    )
     payload = svc.build_activity_payload(
         relation_id=relation_id,
         activity_type_code=ACTIVITY_TYPE_CODE,
         activity_record_type_code=ACTIVITY_RECORD_TYPE_CODE,
     )
-    resp = svc.create_activity_record(
-        member_id=owner.member_id,
-        user_id=owner.user_id,
-        token=owner.token,
-        payload=payload,
-    )
+    resp = svc.create_activity_record(ctx, payload)
     data = resp.get("data")
     if isinstance(data, dict):
         return int(data.get("id") or data.get("activityId") or 0)

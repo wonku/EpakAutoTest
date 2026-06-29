@@ -48,21 +48,10 @@ pipeline {
             steps {
                 script {
                     def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
-                    // Windows cmd 不会展开 tests/test_api_*.py，必须显式列出文件
-                    def happyPathTests = [
-                        'tests/test_api_assign_lead.py',
-                        'tests/test_api_claim_lead.py',
-                        'tests/test_api_create_lead.py',
-                        'tests/test_api_create_lead_activity.py',
-                        'tests/test_api_create_lead_with_activity.py',
-                        'tests/test_api_move_lead_public_sea.py',
-                    ].join(' ')
-                    def testPath = params.INCLUDE_NEGATIVE
-                        ? "${happyPathTests} tests/test_api_negative.py"
-                        : happyPathTests
+                    def markerExpr = params.INCLUDE_NEGATIVE ? 'api' : 'api and not api_negative'
                     bat """
                         if not exist reports\\junit mkdir reports\\junit
-                        pytest ${testPath} -v ^
+                        pytest -m "${markerExpr}" -v ^
                             --junitxml=reports/junit/crm-api.xml ^
                             ${emailArg}
                     """

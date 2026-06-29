@@ -4,8 +4,13 @@ import json
 from pathlib import Path
 
 from config import settings
-from utils.email_report import EmailReportConfig, build_ui_inspection_email_body, send_pytest_email_report
-from utils.esbao_ui_report import ui_report_attachments
+from utils.email_config import (
+    email_config_from_settings,
+    mask_recipient,
+    write_email_audit,
+)
+from utils.email_report import build_ui_inspection_email_body, send_pytest_email_report
+from utils.mall_ui_report import ui_report_attachments
 
 
 def email_report_requested(config) -> bool:
@@ -19,16 +24,35 @@ def email_report_requested(config) -> bool:
 
 def send_ui_report_email(config, label: str, report_path: Path) -> bool:
     if not email_report_requested(config):
+        print("email report skipped: add --email-report or set EMAIL_REPORT_ENABLED=true")
+        write_email_audit(
+            status="skipped",
+            label=label,
+            subject="",
+            recipients=[],
+            error="email report not requested",
+        )
         return False
 
     sent: set[str] = getattr(config, "_ui_emails_sent", set())
     key = str(Path(report_path).resolve())
     if key in sent:
+        print(f"email report skipped for {label}: already sent for {key}")
         return False
 
     path = Path(report_path)
     if not path.exists():
-        print(f"email report skipped for {label}: report not found at {path}")
+        message = f"report not found at {path}"
+        print(f"email report skipped for {label}: {message}")
+        write_email_audit(status="skipped", label=label, subject="", recipients=[], error=message)
+        return False
+
+    email_config = email_config_from_settings()
+    recipients = email_config.recipients
+    if not recipients:
+        message = "EMAIL_TO is empty — configure recipient addresses in Jenkins Credentials"
+        print(f"email report was not sent for {label}: {message}")
+        write_email_audit(status="failed", label=label, subject="", recipients=[], error=message)
         return False
 
     report = json.loads(path.read_text(encoding="utf-8"))
@@ -44,34 +68,41 @@ def send_ui_report_email(config, label: str, report_path: Path) -> bool:
             "failed": 0 if report.get("status") == "PASS" else 1,
             "skipped": 0,
         },
-        "report_label": f"{label}UI巡检",
+        "report_label": f"{label}",
     }
     summary_path = Path("reports/test-summary-last.json")
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    email_config = EmailReportConfig(
-        smtp_host=settings.EMAIL_SMTP_HOST,
-        smtp_port=settings.EMAIL_SMTP_PORT,
-        smtp_ssl=settings.EMAIL_SMTP_SSL,
-        smtp_starttls=settings.EMAIL_SMTP_STARTTLS,
-        username=settings.EMAIL_USERNAME,
-        password=settings.EMAIL_PASSWORD,
-        sender=settings.EMAIL_FROM,
-        recipients=settings.EMAIL_TO,
-        subject_prefix=settings.EMAIL_SUBJECT_PREFIX,
-        attach_logs=settings.EMAIL_ATTACH_LOGS,
-        max_attachment_mb=settings.EMAIL_MAX_ATTACHMENT_MB,
-    )
     body = build_ui_inspection_email_body([(label, report)], summary)
     attachments = ui_report_attachments(report_dir, summary_path)
     try:
-        send_pytest_email_report(email_config, summary, attachments, body=body)
+        subject = send_pytest_email_report(email_config, summary, attachments, body=body)
     except Exception as exc:
-        print(f"email report was not sent for {label}: {exc}")
+        message = str(exc)
+        print(f"email report was not sent for {label}: {message}")
+        write_email_audit(
+            status="failed",
+            label=label,
+            subject="",
+            recipients=recipients,
+            error=message,
+            attachment_count=len(attachments),
+        )
         return False
 
+    audit_path = write_email_audit(
+        status="sent",
+        label=label,
+        subject=subject,
+        recipients=recipients,
+        attachment_count=len(attachments),
+    )
+    masked = ", ".join(mask_recipient(item) for item in recipients)
+    print(
+        f"email report sent for {label} -> {masked} "
+        f"(recipients={len(recipients)}, attachments={len(attachments)}, audit={audit_path})"
+    )
     sent.add(key)
     config._ui_emails_sent = sent
-    print(f"email report sent for {label} -> {', '.join(settings.EMAIL_TO)}")
     return True

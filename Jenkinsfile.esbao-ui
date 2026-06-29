@@ -34,9 +34,25 @@ pipeline {
         EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
         ESB_UI_HEADLESS = 'true'
         ESB_UI_REPORT_DIR = "${WORKSPACE}/reports/ui/esbao"
+        MALL_UI_NAV_TIMEOUT_MS = '120000'
+        MALL_UI_GOTO_WAIT_UNTIL = 'commit'
+        MALL_UI_GOTO_RETRIES = '3'
+        PYTHONIOENCODING = 'utf-8'
+        PYTHONUTF8 = '1'
     }
 
     stages {
+        stage('Network precheck') {
+            steps {
+                bat '''
+                    curl -I -m 30 https://auth.esbao.com/
+                    if errorlevel 1 exit /b 1
+                    curl -I -m 30 https://www.esbao.com/
+                    if errorlevel 1 exit /b 1
+                '''
+            }
+        }
+
         stage('Install Python deps') {
             steps {
                 bat 'python -m pip install -r requirements.txt'
@@ -57,6 +73,7 @@ pipeline {
                 script {
                     def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
                     bat """
+                        chcp 65001 >nul
                         if not exist reports\\junit mkdir reports\\junit
                         pytest tests/test_esbao_mall_ui.py -m esbao -s -v ^
                             --junitxml=reports/junit/esbao-ui.xml ^
@@ -77,6 +94,7 @@ pipeline {
         }
         failure {
             echo '易食包 UI 巡检失败，请查看 Console、reports/ui/esbao 截图与 report.json'
+            bat 'if exist reports\\email-last.json type reports\\email-last.json'
         }
     }
 }

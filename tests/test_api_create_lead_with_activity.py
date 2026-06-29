@@ -1,45 +1,32 @@
 import json
 
 import allure
+import pytest
 
 from config.settings import ACTIVITY_RECORD_TYPE_CODE, ACTIVITY_TYPE_CODE
+
+pytestmark = pytest.mark.api
 
 
 @allure.feature("CRM 接口造数")
 @allure.story("销售线索与活动记录一体化")
 @allure.title("一步创建线索并新增对应活动记录")
-def test_create_lead_and_activity_record_by_api(auth_login_data, crm_lead_service):
-    lead_payload = crm_lead_service.build_random_lead_payload(
-        member_id=auth_login_data["memberId"],
-        user_id=auth_login_data["userId"],
-        token=auth_login_data["token"],
-    )
-    lead_resp = crm_lead_service.create_lead(
-        member_id=auth_login_data["memberId"],
-        user_id=auth_login_data["userId"],
-        token=auth_login_data["token"],
-        payload=lead_payload,
-    )
+def test_create_lead_and_activity_record_by_api(crm_auth, crm_lead_service):
+    lead_payload = crm_lead_service.build_random_lead_payload(crm_auth)
+    lead_resp = crm_lead_service.create_lead(crm_auth, lead_payload)
     assert lead_resp.get("code") == 1000, f"创建线索失败: {lead_resp}"
 
     relation_id = crm_lead_service.resolve_relation_id_from_created_lead(
+        crm_auth,
         create_response=lead_resp,
         create_payload=lead_payload,
-        member_id=auth_login_data["memberId"],
-        user_id=auth_login_data["userId"],
-        token=auth_login_data["token"],
     )
     activity_payload = crm_lead_service.build_activity_payload(
         relation_id=relation_id,
         activity_type_code=ACTIVITY_TYPE_CODE,
         activity_record_type_code=ACTIVITY_RECORD_TYPE_CODE,
     )
-    activity_resp = crm_lead_service.create_activity_record(
-        member_id=auth_login_data["memberId"],
-        user_id=auth_login_data["userId"],
-        token=auth_login_data["token"],
-        payload=activity_payload,
-    )
+    activity_resp = crm_lead_service.create_activity_record(crm_auth, activity_payload)
 
     allure.attach(
         json.dumps(

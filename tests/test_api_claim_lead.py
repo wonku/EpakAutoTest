@@ -3,15 +3,17 @@ import json
 import allure
 import pytest
 
+from api.auth_context import AuthContext
 from config.settings import (
     CLAIM_LEAD_CASES,
     LOGIN_PASSWORD_ENCRYPTED,
     LOGIN_PHONE,
 )
 
+pytestmark = pytest.mark.api
+
 
 def _load_claim_lead_cases() -> list[dict]:
-    """从环境变量加载认领用例；账号密码可省略，则使用默认登录配置。"""
     if CLAIM_LEAD_CASES:
         raw_cases = json.loads(CLAIM_LEAD_CASES)
         if not isinstance(raw_cases, list) or not raw_cases:
@@ -39,7 +41,6 @@ def _load_claim_lead_cases() -> list[dict]:
             )
         return cases
 
-    # 默认走自包含流程，避免 Jenkins/CI 依赖固定 leadId 是否已在公海
     return [
         {
             "account": LOGIN_PHONE,
@@ -56,39 +57,18 @@ def _case_id(case: dict) -> str:
     return f"{case['account']}_leads_{lead_ids}"
 
 
-def _prepare_public_sea_lead(crm_lead_service, login_data: dict) -> int:
-    """创建线索 → 移入公海，返回可用于认领的 leadId。"""
-    member_id = login_data["memberId"]
-    user_id = login_data["userId"]
-    token = login_data["token"]
-
-    lead_payload = crm_lead_service.build_random_lead_payload(
-        member_id=member_id,
-        user_id=user_id,
-        token=token,
-    )
-    create_body = crm_lead_service.create_lead(
-        member_id=member_id,
-        user_id=user_id,
-        token=token,
-        payload=lead_payload,
-    )
+def _prepare_public_sea_lead(crm_lead_service, ctx: AuthContext) -> int:
+    lead_payload = crm_lead_service.build_random_lead_payload(ctx)
+    create_body = crm_lead_service.create_lead(ctx, lead_payload)
     assert create_body.get("code") == 1000, f"认领前置：创建线索失败: {create_body}"
 
     lead_id = crm_lead_service.resolve_relation_id_from_created_lead(
+        ctx,
         create_response=create_body,
         create_payload=lead_payload,
-        member_id=member_id,
-        user_id=user_id,
-        token=token,
     )
     move_payload = crm_lead_service.build_move_public_sea_payload(lead_ids=[lead_id])
-    move_body = crm_lead_service.move_leads_to_public_sea(
-        member_id=member_id,
-        user_id=user_id,
-        token=token,
-        payload=move_payload,
-    )
+    move_body = crm_lead_service.move_leads_to_public_sea(ctx, move_payload)
     assert move_body.get("code") == 1000, f"认领前置：移入公海失败: {move_body}"
     return lead_id
 
@@ -105,23 +85,19 @@ def test_claim_leads_by_api(auth_service, crm_lead_service, case):
             case["account"],
             case["password_encrypted"],
         )
+    ctx = AuthContext.from_login_data(login_data)
 
     setup_detail = {}
     if case.get("prepare_public_sea_lead"):
         with allure.step("创建线索并移入公海，准备可认领数据"):
-            lead_id = _prepare_public_sea_lead(crm_lead_service, login_data)
+            lead_id = _prepare_public_sea_lead(crm_lead_service, ctx)
             lead_ids = [lead_id]
             setup_detail = {"prepared_lead_id": lead_id, "mode": "create_and_move_to_public_sea"}
     else:
         lead_ids = case["lead_ids"]
 
     payload = crm_lead_service.build_claim_lead_payload(lead_ids=lead_ids)
-    body = crm_lead_service.claim_leads(
-        member_id=login_data["memberId"],
-        user_id=login_data["userId"],
-        token=login_data["token"],
-        payload=payload,
-    )
+    body = crm_lead_service.claim_leads(ctx, payload)
     allure.attach(
         json.dumps(
             {

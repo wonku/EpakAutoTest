@@ -4,6 +4,7 @@ import json
 import random
 from datetime import datetime
 
+from api.auth_context import AuthContext
 from api.client import ApiClient
 from config.settings import (
     API_TIMEOUT_SECONDS,
@@ -26,6 +27,8 @@ from config.settings import (
     MOVE_PUBLIC_SEA_REMARK,
     PLATFORM_BASE_URL,
 )
+
+CRM_SALES_CLUE_REFERER = "/memberCenter/crm2Ability/salesClue"
 
 
 class CrmLeadService:
@@ -50,12 +53,26 @@ class CrmLeadService:
     def _normalize_text(value: str) -> str:
         return (value or "").strip().lower().replace(" ", "")
 
+    @staticmethod
+    def build_headers(ctx: AuthContext, referer_path: str = CRM_SALES_CLUE_REFERER) -> dict:
+        return {
+            "Accept": "*/*",
+            "Content-Type": "application/json",
+            "environment": AUTH_ENVIRONMENT,
+            "site": AUTH_SITE,
+            "source": AUTH_SOURCE,
+            "Origin": PLATFORM_BASE_URL,
+            "Referer": f"{PLATFORM_BASE_URL}{referer_path}",
+            "memberId": str(ctx.member_id),
+            "userId": str(ctx.user_id),
+            "token": ctx.token,
+            "Authorization": ctx.token,
+        }
+
     def build_random_lead_payload(
         self,
+        ctx: AuthContext,
         *,
-        member_id: int,
-        user_id: int,
-        token: str,
         follow_user_id: int = CRM_DEFAULT_FOLLOW_USER_ID,
         follow_user_name: str = CRM_DEFAULT_FOLLOW_USER_NAME,
         country: str = LEAD_COUNTRY,
@@ -65,12 +82,7 @@ class CrmLeadService:
             raise AssertionError("country 不能为空，请在 .env 中设置 LEAD_COUNTRY")
         final_country_code = (country_code or "").strip()
         if not final_country_code:
-            final_country_code = self.resolve_country_area_code(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                country_name=country,
-            )
+            final_country_code = self.resolve_country_area_code(ctx, country_name=country)
         today = datetime.now().strftime("%y.%m.%d")
         suffix = random.randint(0, 999)
         phone = f"1{random.randint(30, 99)}{random.randint(1000, 9999)}{random.randint(1000, 9999)}"
@@ -89,25 +101,12 @@ class CrmLeadService:
             "followUserName": follow_user_name,
         }
 
-    def resolve_country_area_code(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        country_name: str,
-    ) -> str:
-        headers = self._build_headers(
-            member_id=member_id,
-            user_id=user_id,
-            token=token,
-            referer_path="/memberCenter/crm2Ability/salesClue",
-        )
+    def resolve_country_area_code(self, ctx: AuthContext, *, country_name: str) -> str:
         resp = self.client.request(
             "GET",
             COUNTRY_LIST_API_URL,
             params={"pageNum": 1, "pageSize": 500},
-            headers=headers,
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -125,32 +124,12 @@ class CrmLeadService:
                     return str(area_code)
         raise AssertionError(f"未在国家接口中找到国家: {country_name}")
 
-    def create_lead(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        payload: dict,
-    ) -> dict:
-        headers = {
-            "Accept": "*/*",
-            "Content-Type": "application/json",
-            "environment": AUTH_ENVIRONMENT,
-            "site": AUTH_SITE,
-            "source": AUTH_SOURCE,
-            "Origin": PLATFORM_BASE_URL,
-            "Referer": f"{PLATFORM_BASE_URL}/memberCenter/crm2Ability/salesClue",
-            "memberId": str(member_id),
-            "userId": str(user_id),
-            "token": token,
-            "Authorization": token,
-        }
+    def create_lead(self, ctx: AuthContext, payload: dict) -> dict:
         resp = self.client.request(
             "POST",
             CRM_LEAD_SAVE_API_URL,
             json_body=payload,
-            headers=headers,
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -174,28 +153,10 @@ class CrmLeadService:
             "relationId": relation_id,
         }
 
-    @staticmethod
-    def _build_headers(*, member_id: int, user_id: int, token: str, referer_path: str) -> dict:
-        return {
-            "Accept": "*/*",
-            "Content-Type": "application/json",
-            "environment": AUTH_ENVIRONMENT,
-            "site": AUTH_SITE,
-            "source": AUTH_SOURCE,
-            "Origin": PLATFORM_BASE_URL,
-            "Referer": f"{PLATFORM_BASE_URL}{referer_path}",
-            "memberId": str(member_id),
-            "userId": str(user_id),
-            "token": token,
-            "Authorization": token,
-        }
-
     def query_leads(
         self,
+        ctx: AuthContext,
         *,
-        member_id: int,
-        user_id: int,
-        token: str,
         phone: str | None = None,
         name: str | None = None,
         page_num: int = 1,
@@ -210,12 +171,7 @@ class CrmLeadService:
             "POST",
             CRM_LEAD_PAGE_API_URL,
             json_body=payload,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -223,12 +179,10 @@ class CrmLeadService:
 
     def resolve_relation_id_from_created_lead(
         self,
+        ctx: AuthContext,
         *,
         create_response: dict,
         create_payload: dict,
-        member_id: int,
-        user_id: int,
-        token: str,
     ) -> int:
         data = create_response.get("data")
         if isinstance(data, dict):
@@ -239,9 +193,7 @@ class CrmLeadService:
             return data
 
         query_body = self.query_leads(
-            member_id=member_id,
-            user_id=user_id,
-            token=token,
+            ctx,
             phone=create_payload.get("phone"),
             name=create_payload.get("name"),
             page_num=1,
@@ -255,24 +207,12 @@ class CrmLeadService:
             return int(rows[0]["id"])
         raise AssertionError(f"未能根据创建线索解析 relationId: {query_body}")
 
-    def create_activity_record(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        payload: dict,
-    ) -> dict:
+    def create_activity_record(self, ctx: AuthContext, payload: dict) -> dict:
         resp = self.client.request(
             "POST",
             CRM_ACTIVITY_SAVE_API_URL,
             json_body=payload,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -295,24 +235,12 @@ class CrmLeadService:
             "remark": remark if remark is not None else MOVE_PUBLIC_SEA_REMARK,
         }
 
-    def move_leads_to_public_sea(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        payload: dict,
-    ) -> dict:
+    def move_leads_to_public_sea(self, ctx: AuthContext, payload: dict) -> dict:
         resp = self.client.request(
             "POST",
             CRM_LEAD_MOVE_PUBLIC_SEA_API_URL,
             json_body=payload,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -322,24 +250,12 @@ class CrmLeadService:
     def build_claim_lead_payload(*, lead_ids: list[int]) -> dict:
         return {"leadIds": lead_ids}
 
-    def claim_leads(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        payload: dict,
-    ) -> dict:
+    def claim_leads(self, ctx: AuthContext, payload: dict) -> dict:
         resp = self.client.request(
             "POST",
             CRM_LEAD_CLAIM_API_URL,
             json_body=payload,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -357,22 +273,11 @@ class CrmLeadService:
                     return rows
         return []
 
-    def list_effective_users(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-    ) -> dict:
+    def list_effective_users(self, ctx: AuthContext) -> dict:
         resp = self.client.request(
             "GET",
             MEMBER_USER_EFFECTIVE_LIST_API_URL,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -380,18 +285,12 @@ class CrmLeadService:
 
     def resolve_follow_user_by_name(
         self,
+        ctx: AuthContext,
         *,
-        member_id: int,
-        user_id: int,
-        token: str,
         follow_user_name: str,
         list_body: dict | None = None,
     ) -> tuple[int, str]:
-        body = list_body or self.list_effective_users(
-            member_id=member_id,
-            user_id=user_id,
-            token=token,
-        )
+        body = list_body or self.list_effective_users(ctx)
         rows = self._extract_list_rows(body)
         target = self._normalize_text(follow_user_name)
         for row in rows:
@@ -426,24 +325,12 @@ class CrmLeadService:
             "newFollowUserName": new_follow_user_name,
         }
 
-    def assign_leads(
-        self,
-        *,
-        member_id: int,
-        user_id: int,
-        token: str,
-        payload: dict,
-    ) -> dict:
+    def assign_leads(self, ctx: AuthContext, payload: dict) -> dict:
         resp = self.client.request(
             "POST",
             CRM_LEAD_ASSIGN_API_URL,
             json_body=payload,
-            headers=self._build_headers(
-                member_id=member_id,
-                user_id=user_id,
-                token=token,
-                referer_path="/memberCenter/crm2Ability/salesClue",
-            ),
+            headers=self.build_headers(ctx),
             timeout=API_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
