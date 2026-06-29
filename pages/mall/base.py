@@ -15,8 +15,8 @@ class MallAuthPageBase(BasePage):
         super().__init__(page)
         self.auth_url = auth_url
 
-    def _goto_with_retry(self, url: str) -> None:
-        wait_until = settings.MALL_UI_GOTO_WAIT_UNTIL
+    def _goto_with_retry(self, url: str, *, wait_until: str | None = None) -> None:
+        wait_until = wait_until or settings.MALL_UI_GOTO_WAIT_UNTIL
         timeout_ms = settings.MALL_UI_NAV_TIMEOUT_MS
         retries = max(settings.MALL_UI_GOTO_RETRIES, 1)
         errors: list[str] = []
@@ -34,11 +34,18 @@ class MallAuthPageBase(BasePage):
         )
 
     def open(self) -> None:
-        self._goto_with_retry(self.auth_url)
+        self._goto_with_retry(self.auth_url, wait_until="domcontentloaded")
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=30000)
+        except PlaywrightTimeoutError:
+            pass
         self._wait_for_login_page_ready()
 
     def _wait_for_login_page_ready(self) -> None:
-        self.page.locator(self.logo_selector).first.wait_for(state="visible", timeout=30000)
+        self.page.locator(self.logo_selector).first.wait_for(
+            state="visible",
+            timeout=settings.MALL_UI_AUTH_READY_TIMEOUT_MS,
+        )
 
     def open_mall_home_in_new_tab(
         self,

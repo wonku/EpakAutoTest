@@ -12,17 +12,18 @@ class EsbaoAuthPage(MallAuthPageBase):
     LOGIN_BUTTON_TEXT = "点击登录"
 
     def _wait_for_login_page_ready(self) -> None:
+        timeout = settings.MALL_UI_AUTH_READY_TIMEOUT_MS
         self.page.get_by_role("heading", name=self.WELCOME_TEXT).wait_for(
             state="visible",
-            timeout=30000,
+            timeout=timeout,
         )
         self.page.get_by_role("button", name=self.LOGIN_BUTTON_TEXT).wait_for(
             state="visible",
-            timeout=30000,
+            timeout=timeout,
         )
         self.page.locator(self.logo_selector).first.wait_for(
             state="visible",
-            timeout=30000,
+            timeout=timeout,
         )
 
     def assert_login_page_loaded(self) -> None:

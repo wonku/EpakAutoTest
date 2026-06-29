@@ -44,9 +44,21 @@ def _launch_page(playwright_instance, profile: BrowserProfile, *, mall_ui: bool 
     if BROWSER_EXECUTABLE_PATH:
         launch_kwargs["executable_path"] = BROWSER_EXECUTABLE_PATH
     browser = playwright_instance.chromium.launch(**launch_kwargs)
-    context = browser.new_context(
-        viewport={"width": profile.viewport_width, "height": profile.viewport_height}
-    )
+    context_kwargs = {
+        "viewport": {"width": profile.viewport_width, "height": profile.viewport_height},
+    }
+    if mall_ui:
+        context_kwargs.update(
+            {
+                "user_agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+                "locale": "en-US",
+            }
+        )
+    context = browser.new_context(**context_kwargs)
     if mall_ui:
         context.set_default_navigation_timeout(settings.MALL_UI_NAV_TIMEOUT_MS)
         context.set_default_timeout(max(settings.MALL_UI_NAV_TIMEOUT_MS // 2, 30000))
