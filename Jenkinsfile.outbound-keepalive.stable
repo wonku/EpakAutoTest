@@ -1,0 +1,116 @@
+// 外呼保活 — 网络不稳定时推荐：Pipeline script（粘贴到 Jenkins，不要用 Pipeline script from SCM）
+// 直接使用本机已有代码目录（如 E:\cursor\Pyautotest），无需在 Jenkins 节点再 clone 一份。
+//
+// Job 配置：
+//   Definition = Pipeline script
+//   将本文件内容粘贴到 Script 框
+//   确认 environment.REPO_DIR 指向本机代码路径
+//   GitHub 不通时：Build with Parameters 勾选 SKIP_GIT_SYNC
+pipeline {
+    agent any
+
+    triggers {
+        cron('H 9 13,15,22 * *')
+    }
+
+    options {
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SKIP_GIT_SYNC',
+            defaultValue: true,
+            description: '跳过 git pull，直接使用 REPO_DIR 已有代码（本机开发目录 / GitHub 不通时建议勾选）'
+        )
+        booleanParam(
+            name: 'SEND_EMAIL_REPORT',
+            defaultValue: true,
+            description: '执行结束后发送邮件'
+        )
+        string(
+            name: 'GIT_UPDATE_MAX_ATTEMPTS',
+            defaultValue: '5',
+            description: 'git 更新失败时的最大重试次数（SKIP_GIT_SYNC 未勾选时生效）'
+        )
+        string(
+            name: 'GIT_UPDATE_WAIT_SECONDS',
+            defaultValue: '90',
+            description: 'git 重试间隔（秒）'
+        )
+    }
+
+    environment {
+        REPO_DIR = 'E:\\cursor\\Pyautotest'
+        GIT_BRANCH = 'main'
+        OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED = credentials('OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED')
+        EMAIL_SMTP_HOST = credentials('EMAIL_SMTP_HOST')
+        EMAIL_FROM = credentials('EMAIL_FROM')
+        EMAIL_USERNAME = credentials('EMAIL_USERNAME')
+        EMAIL_TO = credentials('EMAIL_TO')
+        EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
+        PYTHONIOENCODING = 'utf-8'
+        PYTHONUTF8 = '1'
+    }
+
+    stages {
+        stage('Sync repo (retry)') {
+            when {
+                expression { return !params.SKIP_GIT_SYNC }
+            }
+            steps {
+                dir("${env.REPO_DIR}") {
+                    bat """
+                        set GIT_UPDATE_MAX_ATTEMPTS=${params.GIT_UPDATE_MAX_ATTEMPTS}
+                        set GIT_UPDATE_WAIT_SECONDS=${params.GIT_UPDATE_WAIT_SECONDS}
+                        set GIT_BRANCH=${env.GIT_BRANCH}
+                        scripts\\jenkins_git_update_retry.bat
+                    """
+                }
+            }
+        }
+
+        stage('Install Python deps') {
+            steps {
+                dir("${env.REPO_DIR}") {
+                    retry(2) {
+                        bat 'python -m pip install -r requirements.txt'
+                    }
+                }
+            }
+        }
+
+        stage('Outbound call keepalive') {
+            steps {
+                dir("${env.REPO_DIR}") {
+                    script {
+                        def emailFlag = params.SEND_EMAIL_REPORT ? 'true' : 'false'
+                        bat """
+                            chcp 65001 >nul
+                            set SEND_EMAIL_REPORT=${emailFlag}
+                            set GIT_UPDATE_MAX_ATTEMPTS=${params.GIT_UPDATE_MAX_ATTEMPTS}
+                            scripts\\run_outbound_keepalive_jenkins.bat
+                            if errorlevel 1 exit /b 1
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            dir("${env.REPO_DIR}") {
+                archiveArtifacts artifacts: 'reports/outbound-keepalive/**', allowEmptyArchive: true
+            }
+        }
+        success {
+            echo '外呼保活任务执行成功'
+        }
+        failure {
+            echo '外呼保活任务失败，请查看 Console 与 reports/outbound-keepalive/report.json'
+        }
+    }
+}

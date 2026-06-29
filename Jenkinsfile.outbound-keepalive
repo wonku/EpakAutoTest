@@ -11,6 +11,7 @@ pipeline {
         timeout(time: 45, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
         disableConcurrentBuilds()
+        retry(2)
     }
 
     parameters {
@@ -35,20 +36,24 @@ pipeline {
     stages {
         stage('Install Python deps') {
             steps {
-                bat 'python -m pip install -r requirements.txt'
+                retry(3) {
+                    bat 'python -m pip install -r requirements.txt'
+                }
             }
         }
 
         stage('Outbound call keepalive') {
             steps {
-                script {
-                    def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
-                    bat """
-                        chcp 65001 >nul
-                        if not exist reports\\outbound-keepalive mkdir reports\\outbound-keepalive
-                        python scripts\\outbound_call_keepalive.py ${emailArg}
-                        if errorlevel 1 exit /b 1
-                    """
+                retry(2) {
+                    script {
+                        def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
+                        bat """
+                            chcp 65001 >nul
+                            if not exist reports\\outbound-keepalive mkdir reports\\outbound-keepalive
+                            python scripts\\outbound_call_keepalive.py ${emailArg}
+                            if errorlevel 1 exit /b 1
+                        """
+                    }
                 }
             }
         }
