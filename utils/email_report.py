@@ -46,10 +46,7 @@ def send_pytest_email_report(
     config.validate()
 
     status = "PASS" if summary.get("exitstatus") == 0 else "FAIL"
-    raw_label = report_label or summary.get("report_label") or "Pytest"
-    from utils.email_config import resolve_email_subject_label
-
-    label = resolve_email_subject_label(raw_label.replace("UI巡检", "").strip() or raw_label)
+    label = report_label or summary.get("report_label") or "Pytest"
     subject = f"{config.subject_prefix} {label} {status}"
     msg = EmailMessage()
     msg["Subject"] = subject

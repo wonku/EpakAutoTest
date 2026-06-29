@@ -6,15 +6,8 @@ from pathlib import Path
 from typing import Callable
 
 import allure
-import pytest
 
 from config import settings
-from pages.esbao_auth_page import EsbaoAuthPage
-from pages.esbao_mall_home_page import EsbaoMallHomePage
-from pages.esbao_product_detail_page import EsbaoProductDetailPage
-from pages.epak_auth_page import EpakAuthPage
-from pages.epak_mall_home_page import EpakMallHomePage
-from pages.epak_product_detail_page import EpakProductDetailPage
 from utils.mall_ui_report import MallUiReportCollector
 from utils.ui_report_email import send_ui_report_email
 
@@ -38,62 +31,9 @@ class MallInspectionSite:
     open_product: Callable
     pre_home_checks: Callable | None = None
 
-
-ESBAO_SITE = MallInspectionSite(
-    site_id="esbao",
-    feature="易食包商城",
-    story="生产环境首页巡检",
-    title="登录页进入商城首页并检查热销商品跳转",
-    email_label="易食包商城",
-    report_dir=Path(settings.ESB_UI_REPORT_DIR),
-    suite_name="esbao_mall_ui",
-    config_report_attr="_esbao_ui_report_path",
-    auth_url=settings.ESB_AUTH_URL,
-    home_url=settings.ESB_MALL_HOME_URL,
-    screenshot_prefix="esbao",
-    auth_page_factory=lambda page, url: EsbaoAuthPage(page, url),
-    home_page_factory=lambda page, url: EsbaoMallHomePage(page, url),
-    detail_page_factory=lambda page: EsbaoProductDetailPage(page),
-    open_product=lambda home: home.open_any_hot_product(
-        preferred_name=settings.ESB_UI_HOT_PRODUCT_KEYWORD or None
-    ),
-)
-
-EPAK_SITE = MallInspectionSite(
-    site_id="epak",
-    feature="EPAK 英文商城",
-    story="生产环境首页巡检",
-    title="登录页进入商城首页并检查 One-Stop 商品跳转",
-    email_label="EPAK 英文商城",
-    report_dir=Path(settings.EPAK_UI_REPORT_DIR),
-    suite_name="epak_mall_ui",
-    config_report_attr="_epak_ui_report_path",
-    auth_url=settings.EPAK_AUTH_URL,
-    home_url=settings.EPAK_MALL_HOME_URL,
-    screenshot_prefix="epak",
-    auth_page_factory=lambda page, url: EpakAuthPage(page, url),
-    home_page_factory=lambda page, url: EpakMallHomePage(page, url),
-    detail_page_factory=lambda page: EpakProductDetailPage(page),
-    open_product=lambda home: home.open_any_one_stop_product(
-        preferred_name=settings.EPAK_UI_PRODUCT_KEYWORD or None
-    ),
-    pre_home_checks=lambda home, collector, mall_page, prefix: _epak_pre_home_checks(
-        home, collector, mall_page, prefix
-    ),
-)
-
-
-def _epak_pre_home_checks(home, collector, mall_page, prefix) -> None:
-    with allure.step("等待订阅弹窗加载并关闭"):
-        popup_loaded = home.wait_for_subscribe_popup_loaded()
-        collector.add_check("subscribe_popup", {"loaded": popup_loaded})
-        if popup_loaded:
-            collector.save_screenshot(
-                mall_page, f"03-{prefix}-subscribe-popup.png", full_page=False
-            )
-            home.close_subscribe_popup()
-        home.dismiss_cookie_banner_if_present()
-        collector.add_step("关闭订阅弹窗", "pass", popup_loaded=popup_loaded)
+    @property
+    def email_report_label(self) -> str:
+        return f"{self.email_label}UI巡检"
 
 
 def _make_collector(site: MallInspectionSite) -> MallUiReportCollector:
@@ -180,5 +120,9 @@ def run_mall_inspection(mall_ui_page, site: MallInspectionSite, request) -> None
     finally:
         summary_path = collector.save(exitstatus=exitstatus)
         setattr(request.config, site.config_report_attr, str(summary_path))
-        send_ui_report_email(request.config, site.email_label, summary_path)
-
+        send_ui_report_email(
+            request.config,
+            site.email_label,
+            summary_path,
+            report_label=site.email_report_label,
+        )

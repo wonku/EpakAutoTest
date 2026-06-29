@@ -116,6 +116,22 @@ def _normalize_nodeid(nodeid: str) -> str:
     return nodeid.replace("\\", "/")
 
 
+def _infer_mall_ui_label(config) -> str | None:
+    markexpr = (getattr(config.option, "markexpr", None) or "").lower()
+    if "esbao" in markexpr:
+        return "易食包商城UI巡检"
+    if "epak" in markexpr:
+        return "EPAK 英文商城UI巡检"
+
+    for arg in getattr(config, "args", []):
+        normalized = _normalize_nodeid(str(arg)).lower()
+        if "test_esbao_mall_ui" in normalized:
+            return "易食包商城UI巡检"
+        if "test_epak_mall_ui" in normalized:
+            return "EPAK 英文商城UI巡检"
+    return None
+
+
 def _infer_report_context(session) -> dict:
     cli_label = session.config.getoption("--report-label")
     if cli_label:
@@ -129,6 +145,19 @@ def _infer_report_context(session) -> dict:
             "report_label": settings.EMAIL_REPORT_LABEL,
             "report_kind": "custom",
             "report_dir": "reports",
+        }
+
+    mall_label = _infer_mall_ui_label(session.config)
+    if mall_label:
+        report_dir = (
+            str(Path(settings.ESB_UI_REPORT_DIR))
+            if "易食包" in mall_label
+            else str(Path(settings.EPAK_UI_REPORT_DIR))
+        )
+        return {
+            "report_label": mall_label,
+            "report_kind": "mall_ui",
+            "report_dir": report_dir,
         }
 
     nodeids = [_normalize_nodeid(item.nodeid) for item in getattr(session, "items", [])]
@@ -204,6 +233,20 @@ def _load_ui_inspection_reports(config) -> list[tuple[str, dict]]:
     return reports
 
 
+def _build_mall_collection_failure_body(summary: dict) -> str:
+    return "\n".join(
+        [
+            "商城 UI 巡检未能正常执行。",
+            "",
+            f"任务: {summary.get('report_label', '')}",
+            f"状态: 失败（pytest 收集/启动阶段错误，exitstatus={summary.get('exitstatus')}）",
+            "",
+            "请查看 Jenkins Console 中的 ERROR collecting 或 Traceback 详情。",
+            "常见原因：代码语法错误、依赖缺失、Playwright 浏览器未安装。",
+        ]
+    )
+
+
 def _send_email_report(summary_path: Path, session) -> None:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     config = email_config_from_settings()
@@ -212,7 +255,37 @@ def _send_email_report(summary_path: Path, session) -> None:
         for label, report in ui_reports:
             report_dir = Path(report.get("report_dir", ""))
             report_path = report_dir / "report.json"
-            send_ui_report_email(session.config, label, report_path)
+            send_ui_report_email(
+                session.config,
+                label,
+                report_path,
+                report_label=f"{label}UI巡检",
+            )
+        return
+
+    if summary.get("report_kind") == "mall_ui":
+        sent = getattr(session.config, "_ui_emails_sent", set())
+        if sent:
+            return
+        try:
+            send_pytest_email_report(
+                config,
+                summary,
+                [summary_path],
+                report_label=summary.get("report_label"),
+                body=_build_mall_collection_failure_body(summary),
+            )
+        except Exception as exc:
+            from utils.email_config import write_email_audit
+
+            write_email_audit(
+                status="failed",
+                label=summary.get("report_label", "商城UI巡检"),
+                subject="",
+                recipients=config.recipients,
+                error=str(exc),
+            )
+            print(f"email report was not sent: {exc}")
         return
 
     report_kind = summary.get("report_kind", "")

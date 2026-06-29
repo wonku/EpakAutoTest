@@ -25,22 +25,6 @@ def email_config_from_settings() -> EmailReportConfig:
     )
 
 
-EMAIL_SUBJECT_LABEL_MAP = {
-    "易食包商城": "Esbao-Mall",
-    "EPAK 英文商城": "EPAK-Mall",
-    "CRM API 回归": "CRM-API",
-}
-
-
-def resolve_email_subject_label(label: str) -> str:
-    mapped = EMAIL_SUBJECT_LABEL_MAP.get(label)
-    if mapped:
-        return mapped
-    if label.isascii():
-        return label
-    return "Pyautotest"
-
-
 def mask_recipient(address: str) -> str:
     address = address.strip()
     if "@" not in address:

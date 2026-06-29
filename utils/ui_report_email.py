@@ -22,7 +22,13 @@ def email_report_requested(config) -> bool:
     return settings.EMAIL_REPORT_ENABLED
 
 
-def send_ui_report_email(config, label: str, report_path: Path) -> bool:
+def send_ui_report_email(
+    config,
+    label: str,
+    report_path: Path,
+    *,
+    report_label: str | None = None,
+) -> bool:
     if not email_report_requested(config):
         print("email report skipped: add --email-report or set EMAIL_REPORT_ENABLED=true")
         write_email_audit(
@@ -58,6 +64,7 @@ def send_ui_report_email(config, label: str, report_path: Path) -> bool:
     report = json.loads(path.read_text(encoding="utf-8"))
     report_dir = path.parent
     report["report_dir"] = str(report_dir.resolve())
+    email_subject_label = report_label or f"{label}UI巡检"
     summary = {
         "exitstatus": report.get("exitstatus", 1 if report.get("status") != "PASS" else 0),
         "started_at": report.get("started_at", ""),
@@ -68,7 +75,7 @@ def send_ui_report_email(config, label: str, report_path: Path) -> bool:
             "failed": 0 if report.get("status") == "PASS" else 1,
             "skipped": 0,
         },
-        "report_label": f"{label}",
+        "report_label": email_subject_label,
     }
     summary_path = Path("reports/test-summary-last.json")
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -77,7 +84,13 @@ def send_ui_report_email(config, label: str, report_path: Path) -> bool:
     body = build_ui_inspection_email_body([(label, report)], summary)
     attachments = ui_report_attachments(report_dir, summary_path)
     try:
-        subject = send_pytest_email_report(email_config, summary, attachments, body=body)
+        subject = send_pytest_email_report(
+            email_config,
+            summary,
+            attachments,
+            report_label=email_subject_label,
+            body=body,
+        )
     except Exception as exc:
         message = str(exc)
         print(f"email report was not sent for {label}: {message}")

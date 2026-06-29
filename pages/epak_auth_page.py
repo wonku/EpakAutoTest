@@ -5,7 +5,8 @@ from pages.mall.base import MallAuthPageBase
 from pages.mall.navigation import wait_for_mall_home_ready
 
 
-class EpakAuthPage(MallAuthPageBase):    logo_selector = ".lingxi-business-logo"
+class EpakAuthPage(MallAuthPageBase):
+    logo_selector = ".lingxi-business-logo"
     WELCOME_TEXT = "Welcome to EPAK GROUP!"
 
     def assert_login_page_loaded(self) -> None:
