@@ -1,0 +1,68 @@
+// 外呼手机号保活 — 建议在 Jenkins 中单独建 Pipeline Job，Script Path 填此文件
+// 定时：每月 13、15、22 号执行（H 分散到整点后 0~59 分，避免整点扎堆）
+pipeline {
+    agent any
+
+    triggers {
+        cron('H 9 13,15,22 * *')
+    }
+
+    options {
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SEND_EMAIL_REPORT',
+            defaultValue: true,
+            description: '执行结束后发送邮件（需在 Jenkins 配置 EMAIL_* 环境变量或 Credentials）'
+        )
+    }
+
+    environment {
+        OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED = credentials('OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED')
+        EMAIL_SMTP_HOST = credentials('EMAIL_SMTP_HOST')
+        EMAIL_FROM = credentials('EMAIL_FROM')
+        EMAIL_USERNAME = credentials('EMAIL_USERNAME')
+        EMAIL_TO = credentials('EMAIL_TO')
+        EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
+        PYTHONIOENCODING = 'utf-8'
+        PYTHONUTF8 = '1'
+    }
+
+    stages {
+        stage('Install Python deps') {
+            steps {
+                bat 'python -m pip install -r requirements.txt'
+            }
+        }
+
+        stage('Outbound call keepalive') {
+            steps {
+                script {
+                    def emailArg = params.SEND_EMAIL_REPORT ? '--email-report' : ''
+                    bat """
+                        chcp 65001 >nul
+                        if not exist reports\\outbound-keepalive mkdir reports\\outbound-keepalive
+                        python scripts\\outbound_call_keepalive.py ${emailArg}
+                        if errorlevel 1 exit /b 1
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/outbound-keepalive/**', allowEmptyArchive: true
+        }
+        success {
+            echo '外呼保活任务执行成功，报告已归档至 Build Artifacts'
+        }
+        failure {
+            echo '外呼保活任务失败，请查看 Console 与 reports/outbound-keepalive 下的 report.json'
+        }
+    }
+}

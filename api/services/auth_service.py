@@ -32,7 +32,7 @@ class AuthService:
         )
         resp.raise_for_status()
         body = resp.json()
-        data = body.get("data", {})
+        data = body.get("data") or {}
         if not data.get("token"):
             raise AssertionError(f"登录接口未返回有效 token: {body}")
         return data

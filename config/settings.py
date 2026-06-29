@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from pathlib import Path
@@ -200,6 +201,59 @@ MALL_UI_AUTH_READY_TIMEOUT_MS = int(
 )
 MALL_UI_GOTO_WAIT_UNTIL = os.getenv("MALL_UI_GOTO_WAIT_UNTIL", "commit").strip()
 MALL_UI_GOTO_RETRIES = int(os.getenv("MALL_UI_GOTO_RETRIES", "3"))
+
+CRM_YUYINGCLOUD_CALL_PHONE_API_URL = os.getenv(
+    "CRM_YUYINGCLOUD_CALL_PHONE_API_URL",
+    "https://test-platform.ysbpack.com/api/crm/yuyingcloud/callPhone",
+)
+OUTBOUND_CALL_OPERATE_TYPE_CODE = int(os.getenv("OUTBOUND_CALL_OPERATE_TYPE_CODE", "1"))
+OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED = os.getenv("OUTBOUND_KEEPALIVE_PASSWORD_ENCRYPTED", "").strip()
+OUTBOUND_KEEPALIVE_ACCOUNT_INTERVAL_SECONDS = int(
+    os.getenv("OUTBOUND_KEEPALIVE_ACCOUNT_INTERVAL_SECONDS", "300")
+)
+OUTBOUND_KEEPALIVE_REPORT_DIR = os.getenv(
+    "OUTBOUND_KEEPALIVE_REPORT_DIR",
+    str(PROJECT_ROOT / "reports" / "outbound-keepalive"),
+).strip()
+OUTBOUND_KEEPALIVE_CASES_RAW = os.getenv("OUTBOUND_KEEPALIVE_CASES", "").strip()
+
+
+def _default_outbound_keepalive_cases() -> list[dict]:
+    return [
+        {"account": "17701563749", "relation_id": 603},
+        {"account": "17768025264", "relation_id": 603},
+        {"account": "17751104143", "relation_id": 603},
+    ]
+
+
+def load_outbound_keepalive_cases() -> list[dict]:
+    if not OUTBOUND_KEEPALIVE_CASES_RAW:
+        return _default_outbound_keepalive_cases()
+    raw_cases = json.loads(OUTBOUND_KEEPALIVE_CASES_RAW)
+    if not isinstance(raw_cases, list) or not raw_cases:
+        raise ValueError("OUTBOUND_KEEPALIVE_CASES 必须是非空 JSON 数组")
+    cases: list[dict] = []
+    for index, item in enumerate(raw_cases):
+        if not isinstance(item, dict):
+            raise ValueError(f"OUTBOUND_KEEPALIVE_CASES[{index}] 必须是对象")
+        account = item.get("account") or item.get("phone")
+        if not account:
+            raise ValueError(f"OUTBOUND_KEEPALIVE_CASES[{index}] 缺少 account / phone")
+        case: dict = {"account": str(account)}
+        if item.get("relation_id") is not None or item.get("relationId") is not None:
+            case["relation_id"] = int(item.get("relation_id") or item.get("relationId"))
+        password_encrypted = (
+            item.get("password_encrypted")
+            or item.get("passwordEncrypted")
+            or item.get("password")
+        )
+        if password_encrypted:
+            case["password_encrypted"] = str(password_encrypted)
+        cases.append(case)
+    return cases
+
+
+OUTBOUND_KEEPALIVE_CASES = load_outbound_keepalive_cases()
 
 EPAK_AUTH_URL = os.getenv(
     "EPAK_AUTH_URL", "https://auth.epakgroup.com/user/login"
