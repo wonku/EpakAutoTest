@@ -12,6 +12,7 @@ from pages.mall.base import MallHomePageBase
 class EpakMallHomePage(MallHomePageBase):
     ONE_STOP_SECTION_TITLE = "EPAK One-Stop Platform for Food Packaging"
     POPUP_NO_THANKS_PATTERN = re.compile(r"No.?Thanks", re.IGNORECASE)
+    AUTH_HOST_MARKERS = ("auth.epakgroup.com",)
 
     REQUIRED_TEXTS = [
         "Home",
@@ -26,6 +27,7 @@ class EpakMallHomePage(MallHomePageBase):
     ]
 
     def assert_on_home(self) -> None:
+        super().assert_on_home()
         assert "epakgroup.com" in self.page.url, f"当前不在 EPAK 商城首页: {self.page.url}"
 
     def wait_for_subscribe_popup_loaded(self, timeout_ms: int = 30000) -> bool:

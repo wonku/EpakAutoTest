@@ -8,6 +8,7 @@ from pages.mall.base import MallHomePageBase
 class EsbaoMallHomePage(MallHomePageBase):
     HOT_SECTION_TITLE = "热销爆款"
     HOT_PRODUCT_ITEM = ".carousel_item_3dcef7"
+    AUTH_HOST_MARKERS = ("auth.esbao.com",)
 
     REQUIRED_TEXTS = [
         "你好，请登录",
@@ -28,6 +29,7 @@ class EsbaoMallHomePage(MallHomePageBase):
     ]
 
     def assert_on_home(self) -> None:
+        super().assert_on_home()
         assert "esbao.com" in self.page.url, f"当前不在易食包商城首页: {self.page.url}"
 
     def assert_full_page_loaded(self, scroll_pause_ms: int = 400) -> dict:
