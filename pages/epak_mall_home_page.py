@@ -263,7 +263,17 @@ class EpakMallHomePage(MallHomePageBase):
         return None
 
     def _wait_for_detail_page_ready(self, page: Page) -> None:
-        EpakProductDetailPage.dismiss_image_zoom_on_page(page)
+        detail = EpakProductDetailPage(page)
+        detail.dismiss_image_zoom_overlay()
+        for text in EpakProductDetailPage.CTA_TEXT_OPTIONS:
+            button = page.get_by_role("button", name=text)
+            if button.count() == 0:
+                continue
+            try:
+                button.first.wait_for(state="visible", timeout=5000)
+                return
+            except PlaywrightTimeoutError:
+                continue
         pattern = "|".join(EpakProductDetailPage.CTA_TEXT_OPTIONS)
         page.locator(f"text=/{pattern}/").first.wait_for(
             state="visible",

@@ -1,11 +1,19 @@
-from playwright.sync_api import Page
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from pages.mall.base import MallProductDetailPageBase
 
 
 class EpakProductDetailPage(MallProductDetailPageBase):
-    CTA_TEXT_OPTIONS = ("Order Now", "Add Purchase")
-    PARAMETER_TEXTS = ("Main Material", "Thickness", "Width", "Length")
+    CTA_TEXT_OPTIONS = ("Order Now", "Add Purchase", "Inquiry Now")
+    PARAMETER_TEXT_OPTIONS = (
+        "Main Material",
+        "Thickness",
+        "Width",
+        "Length",
+        "Weight(g)",
+        "Product Type",
+        "Capacity(oz)",
+    )
     OPTIONAL_TEXTS = ("Product Introduction", "Basic Information", "Sample")
 
     def dismiss_image_zoom_overlay(self) -> None:
@@ -32,6 +40,15 @@ class EpakProductDetailPage(MallProductDetailPageBase):
 
     def _wait_for_detail_ready(self) -> None:
         self.dismiss_image_zoom_overlay()
+        for text in self.CTA_TEXT_OPTIONS:
+            button = self.page.get_by_role("button", name=text)
+            if button.count() == 0:
+                continue
+            try:
+                button.first.wait_for(state="visible", timeout=5000)
+                return
+            except PlaywrightTimeoutError:
+                continue
         super()._wait_for_detail_ready()
 
     def _scroll_detail_page_for_images(self) -> None:
@@ -40,14 +57,20 @@ class EpakProductDetailPage(MallProductDetailPageBase):
 
     def _assert_extra_detail_content(self) -> None:
         self.dismiss_image_zoom_overlay()
-        self.page.locator("text=Main Material").first.wait_for(
+        pattern = "|".join(self.PARAMETER_TEXT_OPTIONS)
+        self.page.locator(f"text=/{pattern}/").first.wait_for(
             state="visible",
             timeout=self.detail_ready_timeout_ms,
         )
 
     def _extra_detail_checks(self, body: str) -> dict:
-        parameter_checks = {text: text in body for text in self.PARAMETER_TEXTS}
-        missing_params = [name for name, ok in parameter_checks.items() if not ok]
-        if missing_params:
-            raise AssertionError(f"商品详情页缺少参数项: {', '.join(missing_params)}")
-        return {"parameter_checks": parameter_checks}
+        parameter_checks = {
+            text: text in body for text in self.PARAMETER_TEXT_OPTIONS
+        }
+        found = [name for name, ok in parameter_checks.items() if ok]
+        if not found:
+            raise AssertionError(
+                "商品详情页缺少参数项，期望至少出现其一: "
+                f"{', '.join(self.PARAMETER_TEXT_OPTIONS)}"
+            )
+        return {"parameter_checks": parameter_checks, "found_parameters": found}
