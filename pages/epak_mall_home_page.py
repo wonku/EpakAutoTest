@@ -263,6 +263,7 @@ class EpakMallHomePage(MallHomePageBase):
         return None
 
     def _wait_for_detail_page_ready(self, page: Page) -> None:
+        EpakProductDetailPage.dismiss_image_zoom_on_page(page)
         pattern = "|".join(EpakProductDetailPage.CTA_TEXT_OPTIONS)
         page.locator(f"text=/{pattern}/").first.wait_for(
             state="visible",

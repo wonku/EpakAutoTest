@@ -17,11 +17,38 @@ class EpakAuthPage(MallAuthPageBase):
 
     def _wait_for_login_page_ready(self) -> None:
         timeout = settings.MALL_UI_AUTH_READY_TIMEOUT_MS
-        self.page.wait_for_function(
-            """(text) => (document.body?.innerText || '').includes(text)""",
-            arg=self.WELCOME_TEXT,
+        last_error: PlaywrightTimeoutError | None = None
+        for attempt in range(2):
+            attempt_timeout = timeout if attempt == 0 else max(timeout // 2, 30000)
+            try:
+                self._wait_for_login_content(attempt_timeout)
+                self._wait_for_login_logo()
+                return
+            except PlaywrightTimeoutError as exc:
+                last_error = exc
+                if attempt == 0:
+                    self.page.reload(
+                        wait_until="domcontentloaded",
+                        timeout=settings.MALL_UI_NAV_TIMEOUT_MS,
+                    )
+                    try:
+                        self.page.wait_for_load_state("networkidle", timeout=15000)
+                    except PlaywrightTimeoutError:
+                        pass
+                    continue
+        raise last_error if last_error else AssertionError("EPAK 登录页未就绪")
+
+    def _wait_for_login_content(self, timeout: int) -> None:
+        self.page.get_by_text(self.WELCOME_TEXT).first.wait_for(
+            state="visible",
             timeout=timeout,
         )
+        self.page.get_by_role("button", name="Login").wait_for(
+            state="visible",
+            timeout=min(timeout, 15000),
+        )
+
+    def _wait_for_login_logo(self) -> None:
         for selector in self.LOGO_SELECTORS:
             locator = self.page.locator(selector).first
             if locator.count() == 0:
