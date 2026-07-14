@@ -37,29 +37,40 @@ class EpakMallHomePage(MallHomePageBase):
         except PlaywrightTimeoutError:
             return False
 
+        # 弹窗内的营销图片/文案会不定期更新，这里只校验关闭按钮存在，不校验图片内容。
         no_thanks = self.page.locator('[class*="EmailPopLeft_no_text"]').filter(
             has_text=self.POPUP_NO_THANKS_PATTERN
         )
-        no_thanks.first.wait_for(state="visible", timeout=timeout_ms)
-        self.page.wait_for_function(
-            """() => {
-              const modal = document.querySelector('[class*="EmailPopModel"]');
-              if (!modal) return false;
-              const imgs = Array.from(modal.querySelectorAll('img'));
-              if (!imgs.length) return true;
-              return imgs.every(img => img.complete && img.naturalWidth > 0);
-            }""",
-            timeout=timeout_ms,
-        )
-        return True
+        close_btn = self.page.locator('[class*="EmailPopClose"]').first
+        try:
+            no_thanks.first.wait_for(state="visible", timeout=timeout_ms)
+            return True
+        except PlaywrightTimeoutError:
+            pass
+        try:
+            close_btn.wait_for(state="visible", timeout=timeout_ms)
+            return True
+        except PlaywrightTimeoutError:
+            return False
 
     def close_subscribe_popup(self) -> None:
         popup = self.page.locator('[class*="EmailPopModel"]').first
         if popup.count() == 0 or not popup.is_visible():
             return
         close_btn = self.page.locator('[class*="EmailPopClose"]').first
-        close_btn.wait_for(state="visible", timeout=10000)
-        close_btn.click(timeout=10000)
+        no_thanks = self.page.locator('[class*="EmailPopLeft_no_text"]').filter(
+            has_text=self.POPUP_NO_THANKS_PATTERN
+        ).first
+        for candidate in (close_btn, no_thanks):
+            if candidate.count() == 0:
+                continue
+            try:
+                candidate.wait_for(state="visible", timeout=10000)
+                candidate.click(timeout=10000)
+                popup.wait_for(state="hidden", timeout=10000)
+                return
+            except PlaywrightTimeoutError:
+                continue
         popup.wait_for(state="hidden", timeout=10000)
 
     def dismiss_cookie_banner_if_present(self) -> None:
