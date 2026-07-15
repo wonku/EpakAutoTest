@@ -12,6 +12,7 @@ class EpakProductDetailPage(MallProductDetailPageBase):
         "Length",
         "Weight(g)",
         "Product Type",
+        "product",
         "Capacity(oz)",
     )
     OPTIONAL_TEXTS = ("Product Introduction", "Basic Information", "Sample")
@@ -57,10 +58,25 @@ class EpakProductDetailPage(MallProductDetailPageBase):
 
     def _assert_extra_detail_content(self) -> None:
         self.dismiss_image_zoom_overlay()
-        pattern = "|".join(self.PARAMETER_TEXT_OPTIONS)
-        self.page.locator(f"text=/{pattern}/").first.wait_for(
-            state="visible",
-            timeout=self.detail_ready_timeout_ms,
+        # 勿用 text=/A|Weight(g)|.../：括号会被当成正则捕获组，匹配不到字面量 Weight(g)。
+        deadline_ms = self.detail_ready_timeout_ms
+        poll_ms = 500
+        elapsed = 0
+        while elapsed < deadline_ms:
+            for text in self.PARAMETER_TEXT_OPTIONS:
+                locator = self.page.get_by_text(text, exact=True)
+                if locator.count() == 0:
+                    continue
+                try:
+                    if locator.first.is_visible():
+                        return
+                except PlaywrightTimeoutError:
+                    continue
+            self.page.wait_for_timeout(poll_ms)
+            elapsed += poll_ms
+        raise AssertionError(
+            "商品详情页参数项未出现（可见），期望至少其一: "
+            f"{', '.join(self.PARAMETER_TEXT_OPTIONS)}"
         )
 
     def _extra_detail_checks(self, body: str) -> dict:
