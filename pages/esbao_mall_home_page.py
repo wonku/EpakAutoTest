@@ -11,21 +11,10 @@ class EsbaoMallHomePage(MallHomePageBase):
     AUTH_HOST_MARKERS = ("auth.esbao.com",)
 
     REQUIRED_TEXTS = [
-        "你好，请登录",
+        # 保留能证明首页主体加载完成的稳定模块；顶部状态/导航和具体类目会随站点配置变化。
         "商品分类",
-        "用户指南",
-        "场景分类",
-        "甄选工厂",
-        "0元入驻",
-        "内容资讯",
-        "专家人才库",
         "快速询价",
         HOT_SECTION_TITLE,
-        "塑料包装",
-        "纸质包装",
-        "金属包装",
-        "包装设备",
-        "包材原料",
     ]
 
     def assert_on_home(self) -> None:

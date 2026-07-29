@@ -15,10 +15,7 @@ class EpakMallHomePage(MallHomePageBase):
     AUTH_HOST_MARKERS = ("auth.epakgroup.com",)
 
     REQUIRED_TEXTS = [
-        "Home",
-        "Products",
-        "Contact Us",
-        "Quotations",
+        # 保留主体模块标题，避免顶部导航/运营位文案变化造成误判。
         ONE_STOP_SECTION_TITLE,
         "Category Division",
         "You May Require",
