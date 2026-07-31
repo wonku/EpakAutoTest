@@ -31,16 +31,50 @@ class EsbaoMallHomePage(MallHomePageBase):
         )
 
     def _prepare_hot_product_section(self) -> None:
+        """滚动到商品区并切换到「热销爆款」标签（默认常停在「精选好物」）。"""
         self.page.evaluate(
             """() => {
-              const hot = Array.from(document.querySelectorAll('*'))
-                .find(el => (el.innerText || '').trim() === '热销爆款');
-              hot?.scrollIntoView({block: 'center'});
               const floatHeader = document.querySelector('#floatSearch');
               if (floatHeader) floatHeader.style.pointerEvents = 'none';
+              const hot = Array.from(document.querySelectorAll('*'))
+                .find(el => {
+                  const text = (el.innerText || '').trim();
+                  return text === '热销爆款' || text.startsWith('热销爆款');
+                });
+              hot?.scrollIntoView({block: 'center'});
             }"""
         )
-        self.page.wait_for_timeout(500)
+        self.page.wait_for_timeout(300)
+
+        hot_tab = self.page.get_by_text(self.HOT_SECTION_TITLE, exact=True).first
+        try:
+            hot_tab.wait_for(state="visible", timeout=10000)
+            hot_tab.click(timeout=10000)
+        except PlaywrightTimeoutError:
+            # 兜底：通过 JS 点击包含「热销爆款」的可点击节点
+            clicked = self.page.evaluate(
+                """() => {
+                  const nodes = Array.from(document.querySelectorAll('button, [role="tab"], div, span'));
+                  const hot = nodes.find(el => {
+                    const text = (el.innerText || '').trim();
+                    return text === '热销爆款' || text.startsWith('热销爆款');
+                  });
+                  if (!hot) return false;
+                  hot.click();
+                  return true;
+                }"""
+            )
+            if not clicked:
+                raise AssertionError("未找到可点击的「热销爆款」标签")
+
+        self.page.wait_for_timeout(800)
+        try:
+            self.page.locator(self.HOT_PRODUCT_ITEM).first.wait_for(
+                state="visible",
+                timeout=15000,
+            )
+        except PlaywrightTimeoutError:
+            pass
 
     def _list_hot_product_candidates(self, preferred_name: str | None = None) -> list[dict]:
         return self.page.evaluate(
@@ -177,6 +211,7 @@ class EsbaoMallHomePage(MallHomePageBase):
         return None
 
     def open_any_hot_product(self, preferred_name: str | None = None) -> tuple[str, Page]:
+        self._prepare_hot_product_section()
         candidates = self._list_hot_product_candidates(preferred_name)
         if not candidates:
             raise AssertionError("未找到「热销爆款」下可点击的商品卡片")
