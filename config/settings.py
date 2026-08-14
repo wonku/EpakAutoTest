@@ -43,6 +43,26 @@ CRM_ACTIVITY_SAVE_API_URL = os.getenv(
     "CRM_ACTIVITY_SAVE_API_URL",
     "https://test-platform.ysbpack.com/api/crm/common/activity/saveOrUpdate",
 )
+
+# 拜访日程
+CRM_VISIT_SCHEDULE_PAGE_API_URL = os.getenv(
+    "CRM_VISIT_SCHEDULE_PAGE_API_URL",
+    "https://test-platform.ysbpack.com/api/crm/visit/schedule/page",
+)
+CRM_VISIT_SCHEDULE_SAVE_API_URL = os.getenv(
+    "CRM_VISIT_SCHEDULE_SAVE_API_URL",
+    "https://test-platform.ysbpack.com/api/crm/visit/schedule/saveOrUpdate",
+)
+CRM_VISIT_SCHEDULE_DELETE_API_URL = os.getenv(
+    "CRM_VISIT_SCHEDULE_DELETE_API_URL",
+    "https://test-platform.ysbpack.com/api/crm/visit/schedule/delete",
+)
+CRM_UI_VISIT_CUSTOMER_KEYWORD = os.getenv(
+    "CRM_UI_VISIT_CUSTOMER_KEYWORD",
+    "北京中镜眼镜有限责任公司",
+).strip()
+
+CRM_UI_PAUSE_ON_FAILURE = os.getenv("CRM_UI_PAUSE_ON_FAILURE", "false").lower() == "true"
 CRM_LEAD_MOVE_PUBLIC_SEA_API_URL = os.getenv(
     "CRM_LEAD_MOVE_PUBLIC_SEA_API_URL",
     "https://test-platform.ysbpack.com/api/crm/lead/movePublicSea",

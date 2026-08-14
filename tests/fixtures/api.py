@@ -9,6 +9,7 @@ from api.auth_context import AuthContext
 from api.client import ApiClient
 from api.services.auth_service import AuthService
 from api.services.crm_lead_service import CrmLeadService
+from api.services.crm_visit_schedule_service import CrmVisitScheduleService
 from config.settings import (
     API_TIMEOUT_SECONDS,
     LOGIN_PASSWORD_ENCRYPTED,
@@ -80,6 +81,11 @@ def api_client(auth_token) -> ApiClient:
 @pytest.fixture(scope="session")
 def crm_lead_service(api_client) -> CrmLeadService:
     return CrmLeadService(api_client)
+
+
+@pytest.fixture(scope="session")
+def crm_visit_schedule_service(api_client) -> CrmVisitScheduleService:
+    return CrmVisitScheduleService(api_client)
 
 
 @pytest.fixture(scope="function")

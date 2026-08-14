@@ -47,12 +47,18 @@ class HomePage(BasePage):
         raise AssertionError(f"未找到左侧菜单入口: {menu_name}")
 
     def open_crm_2(self) -> Page:
-        for name in ["CRM 2.0", "CRM2.0"]:
-            try:
-                return self.open_left_menu(name)
-            except AssertionError:
-                continue
-        raise AssertionError("未找到左侧菜单中的 CRM 2.0 入口")
+        # 侧栏异步渲染：最多等约 15s
+        deadline = __import__("time").time() + 15
+        last_error: Exception | None = None
+        while __import__("time").time() < deadline:
+            for name in ["CRM 2.0", "CRM2.0"]:
+                try:
+                    return self.open_left_menu(name)
+                except AssertionError as exc:
+                    last_error = exc
+                    continue
+            self.page.wait_for_timeout(500)
+        raise AssertionError(f"未找到左侧菜单中的 CRM 2.0 入口（{last_error}）")
 
     def assert_crm_page_loaded(self, target_page: Page) -> None:
         url = target_page.url.lower()
