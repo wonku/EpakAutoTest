@@ -1,4 +1,4 @@
-// CRM API 回归（含异常场景）— Jenkins 单独建 Job，Script Path 填此文件
+// CRM API 回归（线索 + 客户 + 异常场景等 @api 用例）— Jenkins 单独建 Job，Script Path 填此文件
 pipeline {
     agent any
 
@@ -19,7 +19,7 @@ pipeline {
         }
 
     options {
-        timeout(time: 15, unit: 'MINUTES')
+        timeout(time: 20, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '15'))
         disableConcurrentBuilds()
     }
@@ -51,6 +51,7 @@ pipeline {
                     def markerExpr = params.INCLUDE_NEGATIVE ? 'api' : 'api and not api_negative'
                     bat """
                         if not exist reports\\junit mkdir reports\\junit
+                        echo CRM API scope: lead + customer + opportunity + optional negative
                         pytest -m "${markerExpr}" -v ^
                             --junitxml=reports/junit/crm-api.xml ^
                             ${emailArg}
@@ -66,7 +67,7 @@ pipeline {
             junit allowEmptyResults: true, testResults: 'reports/junit/crm-api.xml'
         }
         success {
-            echo 'CRM API 回归通过，报告已归档至 Build Artifacts'
+            echo 'CRM API 回归通过（含客户/销售机会），报告已归档至 Build Artifacts'
         }
         failure {
             echo 'CRM API 回归失败，请查看 Console、reports/junit/crm-api.xml 与 Allure 结果'

@@ -2,8 +2,12 @@ __pycache__/
 .pytest_cache/
 .venv/
 reports/
+recordings/
 playwright/.cache/
 .env
+.env.en.test
+.env.en.uat
+.env.en.prod
 *.apk
 config/mobile_login.json
 

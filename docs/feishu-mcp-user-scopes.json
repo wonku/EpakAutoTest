@@ -1,0 +1,30 @@
+{
+  "scopes": {
+    "tenant": [],
+    "user": [
+      "im:chat:read",
+      "im:chat.members:read",
+      "im:message:readonly",
+      "wiki:wiki:readonly",
+      "docx:document:readonly",
+      "docx:document:create",
+      "sheets:spreadsheet:readonly",
+      "drive:drive:readonly",
+      "drive:export:readonly",
+      "search:docs:read",
+      "docs:document:import",
+      "docs:document.media:upload",
+      "docs:permission.member:create",
+      "base:app:create",
+      "base:table:create",
+      "base:table:read",
+      "base:field:read",
+      "base:record:retrieve",
+      "base:record:create",
+      "base:record:update",
+      "contact:user.id:readonly",
+      "calendar:calendar",
+      "calendar:calendar:read"
+    ]
+  }
+}

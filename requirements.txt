@@ -7,3 +7,5 @@ numpy
 requests
 Appium-Python-Client
 selenium
+pymysql
+psycopg2-binary

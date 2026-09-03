@@ -56,14 +56,28 @@ def pytest_runtest_makereport(item):
 
     page = item.funcargs.get("page")
     if page is None:
+        page = item.funcargs.get("authenticated_page")
+    if page is None:
         return
 
-    png_bytes = page.screenshot(full_page=True)
-    allure.attach(
-        png_bytes,
-        name=f"{item.name}_failed",
-        attachment_type=allure.attachment_type.PNG,
-    )
+    browser_label = item.funcargs.get("browser_name") or ""
+    shot_name = f"{item.name}_failed"
+    if browser_label:
+        shot_name = f"{item.name}_{browser_label}_failed"
+
+    try:
+        png_bytes = page.screenshot(full_page=True, timeout=10000)
+        allure.attach(
+            png_bytes,
+            name=shot_name,
+            attachment_type=allure.attachment_type.PNG,
+        )
+    except Exception as exc:  # noqa: BLE001
+        allure.attach(
+            str(exc),
+            name=f"{item.name}_screenshot_error",
+            attachment_type=allure.attachment_type.TEXT,
+        )
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):

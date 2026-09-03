@@ -14,6 +14,8 @@
 ```bash
 pip install -r requirements.txt
 playwright install chromium
+# 可选：浏览器兼容测试再装
+# playwright install firefox webkit
 ```
 
 ## 3. 配置测试数据
@@ -75,6 +77,24 @@ pytest tests/test_api_create_lead_activity.py -v
 ```bash
 pytest tests/test_login_benchmark.py -v
 ```
+
+### 浏览器兼容（可选，默认不影响日常回归）
+
+日常不传参数时仍只跑 **chromium**（含 `BROWSER_EXECUTABLE_PATH`），用例数量与 node id 不变。
+
+```bash
+# 单浏览器切换
+pytest tests/test_crm_menu_smoke.py -m crm_ui --ui-browser=firefox
+
+# 多浏览器矩阵（显式传入才会复制用例）
+pytest tests/test_crm_menu_smoke.py -m crm_ui --ui-browsers=chromium,firefox,webkit
+
+# 真机 Chrome / Edge
+pytest tests/test_crm_menu_smoke.py -m crm_ui --ui-browser=chrome
+pytest tests/test_crm_menu_smoke.py -m crm_ui --ui-browser=msedge
+```
+
+商城巡检（`mall_ui_page`）固定 chromium，不受上述矩阵影响。
 
 ## 5. 移动端 Android Monkey 测试
 

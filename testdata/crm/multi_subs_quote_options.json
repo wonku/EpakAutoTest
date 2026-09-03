@@ -1,0 +1,42 @@
+[
+  {
+    "ask_price_type": "通用品",
+    "target_status": "待出厂报价",
+    "quote_channels": "both",
+    "adopt_source": "offline",
+    "packaging_type": "卷类",
+    "is_pallet": 1
+  },
+  {
+    "ask_price_type": "定制品",
+    "target_status": "待出厂报价",
+    "quote_channels": "both",
+    "adopt_source": "offline",
+    "packaging_type": "卷类",
+    "is_pallet": 0
+  },
+  {
+    "ask_price_type": "通用品",
+    "target_status": "待出厂报价",
+    "quote_channels": "both",
+    "adopt_source": "offline",
+    "packaging_type": "纸箱",
+    "is_pallet": 1
+  },
+  {
+    "ask_price_type": "定制品",
+    "target_status": "待出厂报价",
+    "quote_channels": "both",
+    "adopt_source": "offline",
+    "packaging_type": "纸箱",
+    "is_pallet": 0
+  },
+  {
+    "ask_price_type": "定制品",
+    "target_status": "待出厂报价",
+    "quote_channels": "both",
+    "adopt_source": "offline",
+    "packaging_type": 3,
+    "is_pallet": 0
+  }
+]
