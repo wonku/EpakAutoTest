@@ -1,0 +1,73 @@
+def fill_create_overseas_basic(
+        self,
+        *,
+        company_name: str,
+        contact_name: str,
+        contact_phone: str,
+        contact_email: str,
+        country: str,
+        follow_user_keyword: str,
+        company_email: str,
+        main_product: str,
+        main_business: str,
+        annual_turnover: str,
+        company_people_num: str,
+        overseas_address: str,
+        remark: str,
+        inquiry_remark: str,
+        import_country: str = "日本",
+        target_market: str = "",
+        contact_position: str = "采购员",
+        business_type_l1: str = "终端客户",
+        business_type_l2: str = "品牌方",
+    ) -> str:
+        """国外客户：按录制补齐页面红星必填；企业名点选下拉，不走工商。"""
+        if self.page.get_by_text(re.compile(r"工商信息查询")).count() > 0:
+            if self.page.locator("#countryCode").count() == 0:
+                raise AssertionError(
+                    "fill_create_overseas_basic 检测到国内表单（工商信息查询），"
+                    "请确认已点击「新建国外客户」"
+                )
+
+        final_company = self.pick_company_via_dropdown(company_name)
+
+        self._fill_required("#contactPersonSaveOrUpdateReq_name", contact_name)
+        if self.page.locator("#contactPersonSaveOrUpdateReq_phone").count() > 0:
+            self._fill_required("#contactPersonSaveOrUpdateReq_phone", contact_phone)
+        self.select_contact_position(contact_position)
+        if contact_email:
+            self._fill_if_present("#contactPersonSaveOrUpdateReq_email", contact_email)
+
+        self._type_select_keyword("#countryCode", country, required=True)
+        if self.page.locator("#contactPersonSaveOrUpdateReq_countryCode").count() > 0:
+            shown = (
+                self._ant_select_root(
+                    "#contactPersonSaveOrUpdateReq_countryCode"
+                ).inner_text()
+                or ""
+            )
+            if country[:2] not in shown:
+                self._type_select_keyword(
+                    "#contactPersonSaveOrUpdateReq_countryCode", country
+                )
+
+        # 本轮只验证：经营类型一级 → 二级
+        self.select_business_type_cascade(level1=business_type_l1, level2=business_type_l2)
+        if company_email:
+            self._fill_if_present("#email", company_email)
+        self._select_required("#customerGradeCode", first=True)
+        self._assign_follow_user(
+            follow_user_keyword, prefer_text="采购员", required=True
+        )
+
+        self._fill_required("#mainProduct", main_product)
+        self._fill_required("#mainBusiness", main_business)
+        # 目标销售市场：多选远程搜；关键字对不上时回退日本/法国/第一项
+        self._type_select_keyword(
+            "#targetSalesMarketCodes",
+            target_market or country or "日本",
+            multi=True,
+            required=True,
+        )
+        self._fill_required("#annualTurnover", annual_turnover)
+        sel

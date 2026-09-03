@@ -1,0 +1,84 @@
+def confirm_customer_create_save(self) -> None:
+        """点新建客户表单「确定」；避免 Escape / 误点「取消保存」弹窗。"""
+        # 先关掉非「未保存」类遮罩（查重提示等），避免挡住抽屉脚注
+        for _ in range(2):
+            modal = self.page.locator(
+                ".ant-modal-wrap:not([style*='display: none']) .ant-modal-content"
+            )
+            if modal.count() == 0:
+                break
+            text = ""
+            try:
+                text = modal.first.inner_text() or ""
+            except Exception:
+                text = ""
+            if re.search(r"未保存|是否取消", text):
+                cancel = self.page.locator(
+                    ".ant-modal-wrap:not([style*='display: none']) button"
+                ).filter(has_text=re.compile(r"取\s*消"))
+                if cancel.count() > 0:
+                    cancel.first.click(force=True, timeout=3000)
+                break
+            # 其它提示：点知道了/确定/关闭
+            closer = self.page.locator(
+                ".ant-modal-wrap:not([style*='display: none']) button"
+            ).filter(has_text=re.compile(r"知\s*道\s*了|确\s*定|关\s*闭|我知道了"))
+            if closer.count() > 0:
+                try:
+                    closer.first.click(force=True, timeout=3000)
+                    self.page.wait_for_timeout(400)
+                    continue
+                except Exception:
+                    pass
+            xbtn = self.page.locator(
+                ".ant-modal-wrap:not([style*='display: none']) button.ant-modal-close"
+            )
+            if xbtn.count() > 0:
+                try:
+                    xbtn.first.click(force=True, timeout=2000)
+                    self.page.wait_for_timeout(300)
+                except Exception:
+                    break
+            else:
+                break
+
+        discard = self.page.locator(
+            ".ant-modal-wrap:not([style*='display: none'])"
+        ).filter(has_text=re.compile(r"未保存|是否取消"))
+        if discard.count() > 0:
+            cancel = discard.locator("button").filter(has_text=re.compile(r"取\s*消"))
+            if cancel.count() > 0:
+                cancel.first.click(timeout=3000)
+                self.page.wait_for_timeout(400)
+
+        pattern = re.compile(r"确\s*定|保\s*存")
+        candidates = [
+            self.page.locator(".ant-drawer-open .ant-drawer-footer button.ant-btn-primary"),
+            self.page.locator(
+                ".ant-modal-wrap:not([style*='display: none']) "
+                ".ant-modal-footer button.ant-btn-primary"
+            ),
+            self.page.locator("button.ant-btn-primary").filter(has_text=pattern),
+        ]
+        for loc in candidates:
+            btn = loc.filter(has_text=pattern) if loc == candidates[-1] else loc.filter(
+                has_text=pattern
+            )
+            if btn.count() == 0:
+                btn = loc
+            # 过滤掉离开确认弹窗里的按钮
+            for i in range(btn.count() - 1, -1, -1):
+                item = btn.nth(i)
+                try:
+                    if not item.is_visible():
+                        continue
+                    text = (item.inner_text() or "").strip()
+                    if not re.search(r"确\s*定|保\s*存", text):
+                        continue
+                    # 跳过「提示」弹窗中的确认
+                    in_discard = item.locator(
+                        "xpath=ancestor::div[contains(@class,'ant-modal')][1]"
+                    )
+                    if in_discard.count() > 0:
+                        modal_text = in_discard.inner_text() or ""
+                        if re.search(r"未保存|是否取消", m

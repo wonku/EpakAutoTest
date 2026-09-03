@@ -833,6 +833,12 @@ CRM_INQUIRY_EN_RELATION_SKU_IDS = [
     for item in os.getenv("CRM_INQUIRY_EN_RELATION_SKU_IDS", "105212").split(",")
     if item.strip()
 ]
+# 中文商城关联 SKU（写在 .env.cn.*；后续中文流转用）
+CRM_INQUIRY_RELATION_SKU_IDS = [
+    int(item.strip())
+    for item in os.getenv("CRM_INQUIRY_RELATION_SKU_IDS", "").split(",")
+    if item.strip()
+]
 EPAK_ORDER_AGENT_CREATE_API_URL = os.getenv(
     "EPAK_ORDER_AGENT_CREATE_API_URL",
     f"{EPAK_PLATFORM_BASE_URL}/api/order/vendor/create/agent/order",

@@ -1,0 +1,49 @@
+def select_business_type_cascade(
+        self,
+        *,
+        level1: str = "终端客户",
+        level2: str = "品牌方",
+    ) -> None:
+        """经营类型：级联选择一级后再点二级（截图为左右双列）。"""
+        sel = "#businessTypeCode"
+        assert self.page.locator(sel).count() > 0, f"未找到经营类型 {sel}"
+        assert level1 and level2, "经营类型一级/二级不能为空"
+        self._dismiss_select_dropdown()
+
+        # 打开控件（可能是 Select 或 Cascader）
+        root = self.page.locator(
+            f"div.ant-cascader:has({sel}), "
+            f"div.ant-select:has({sel}), "
+            f".ant-form-item:has({sel}) .ant-cascader, "
+            f".ant-form-item:has({sel}) .ant-select"
+        )
+        target = root.first if root.count() > 0 else self.page.locator(sel).first
+        target.scroll_into_view_if_needed(timeout=5000)
+        target.click(timeout=8000)
+        self.page.wait_for_timeout(500)
+
+        # 一级：级联菜单项 / Select 选项
+        l1 = self.page.locator(
+            ".ant-cascader-dropdown:not(.ant-cascader-dropdown-hidden) "
+            ".ant-cascader-menu-item:visible, "
+            ".ant-cascader-menus:visible .ant-cascader-menu-item:visible, "
+            ".ant-select-dropdown:not(.ant-select-dropdown-hidden) "
+            ".ant-select-item-option:not(.ant-select-item-option-disabled), "
+            ".ant-select-dropdown:not(.ant-select-dropdown-hidden) "
+            "[class*='cascader'] [class*='menu-item'], "
+            ".ant-select-dropdown:not(.ant-select-dropdown-hidden) li"
+        ).filter(has_text=re.compile(rf"{re.escape(level1)}"))
+        # 优先精确匹配「终端客户」避免点到「非终端客户」
+        exact_l1 = l1.filter(has_text=re.compile(rf"^{re.escape(level1)}$"))
+        pick_l1 = exact_l1.first if exact_l1.count() > 0 else l1.first
+        assert l1.count() > 0, f"经营类型一级未找到「{level1}」"
+        pick_l1.click(timeout=8000)
+        self.page.wait_for_timeout(500)
+
+        # 二级：右侧子菜单
+        l2 = self.page.locator(
+            ".ant-cascader-dropdown:not(.ant-cascader-dropdown-hidden) "
+            ".ant-cascader-menu-item:visible, "
+            ".ant-cascader-menus:visible .ant-cascader-menu-item:visible, "
+            ".ant-select-dropdown:not(.ant-select-dropdown-hidden) "
+            ".ant-select-item-option:not(.

@@ -8,6 +8,9 @@ playwright/.cache/
 .env.en.test
 .env.en.uat
 .env.en.prod
+.env.cn.test
+.env.cn.uat
+.env.cn.prod
 *.apk
 config/mobile_login.json
 

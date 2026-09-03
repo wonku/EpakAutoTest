@@ -1,0 +1,109 @@
+def fill_create_domestic_basic(
+        self,
+        *,
+        company_keyword: str,
+        contact_name: str,
+        contact_phone: str,
+        follow_user_keyword: str,
+        annual_turnover: str = "1000",
+        company_email: str = "",
+        contact_position: str = "采购员",
+        business_type_l1: str = "终端客户",
+        business_type_l2: str = "品牌方",
+        industry_l1: str = "",
+        industry_l2: str = "",
+        company_people_num: str = "100",
+        company_phone: str = "0512-88888888",
+        registered_capital: str = "1000",
+        establishment_time: str = "2020-01-01",
+        business_scope: str = "自动化经营范围（测试）",
+        standard_industry: str = "商贸零售",
+        province: str = "江苏",
+        city: str = "苏州",
+        district: str = "姑苏区",
+        office_address: str = "自动化办公地址",
+        register_address: str = "",
+    ) -> str:
+        """国内客户：工商选企业后强制补齐红星必填（含经营类型/行业二层）。"""
+        company_name = self.pick_company_via_qichacha(company_keyword)
+
+        self._assign_follow_user(
+            follow_user_keyword, prefer_text="采购员", required=True
+        )
+
+        # 经营类型：一级 → 二级（禁止软跳过）
+        self.select_business_type_cascade(
+            level1=business_type_l1, level2=business_type_l2
+        )
+
+        # 行业地位 / 客户级别 / 客户等级
+        self._ensure_select("#industryStatusCode", first=True, required=True)
+        self._ensure_select("#customerGradeCode", first=True, required=True)
+        if self.page.locator("#customerLevelCode").count() > 0:
+            self._ensure_select("#customerLevelCode", first=True, required=False)
+
+        # 行业：二级级联（未配置文案则逐级点第一项）
+        industry_levels = [x for x in (industry_l1, industry_l2) if x]
+        self.select_cascader_levels(
+            "#industryCode",
+            levels=industry_levels or None,
+            depth=2,
+            required=True,
+            field_name="行业",
+        )
+
+        if company_email:
+            self._ensure_input("#email", company_email, required=False)
+
+        # 联系人
+        self._fill_required("#contactPersonSaveOrUpdateReq_name", contact_name)
+        if self.page.locator("#contactPersonSaveOrUpdateReq_phone").count() > 0:
+            self._fill_required(
+                "#contactPersonSaveOrUpdateReq_phone", contact_phone
+            )
+        if self.page.locator("#contactPersonSaveOrUpdateReq_positionCode").count() > 0:
+            self.select_contact_position(contact_position)
+
+        # 人数 / 年营业额 / 公司电话 / 注册资金 / 成立时间
+        self._ensure_input("#companyPeopleNum", company_people_num, required=True)
+        self._ensure_input("#annualTurnover", annual_turnover, required=True)
+        self._ensure_input("#companyPhone", company_phone, required=False)
+        self._ensure_input("#registeredCapital", registered_capital, required=False)
+        if self.page.locator("#registeredCapitalUnitCode").count() > 0:
+            self._ensure_select(
+                "#registeredCapitalUnitCode", first=True, required=False
+            )
+        self._fill_date(
+            "#establishmentTime", establishment_time, required=False
+        )
+
+        # 经营范围 / 标准行业 / 企业性质 / 地址
+        self._ensure_input(
+            "#businessScope", business_scope, required=True, as_textarea=True
+        )
+        self._ensure_input(
+            "#standardIndustry", standard_industry, required=False, as_textarea=True
+        )
+        if self.page.locator("#enterpriseNatureCode").count() > 0:
+            self._ensure_select("#enterpriseNatureCode", first=True, required=False)
+
+        self.fill_domestic_region(
+            province=province, city=city, district=district
+        )
+        self._ensure_input("#officeAddress", office_address, required=False)
+        if register_address:
+            self._ensure_input("#registerAddress", register_address, required=False)
+        elif self.page.locator("#registerAddress").count() > 0:
+            # 工商常回填；若仍空则用办公地址兜底
+            if not self._input_value("#registerAddress"):
+                self._ensure_input(
+                    "#registerAddress",
+                    office_address or f"{province}{city}自动化注册地址",
+                    required=False,
+                )
+
+        # 采购偏好等
+        if self.page.locator("#purchasePreferenceCode").count() > 0:
+            self._ensure_select("#purchasePreferenceCode", first=True, required=False)
+
+        return company_name

@@ -1,0 +1,23 @@
+def fill_create_domestic_basic(
+        self,
+        *,
+        company_keyword: str,
+        contact_name: str,
+        contact_phone: str,
+        follow_user_keyword: str,
+        annual_turnover: str = "1000",
+        company_email: str = "",
+    ) -> str:
+        """国内客户核心字段；企业名经工商下拉选择。返回最终企业名称。"""
+        company_name = self.pick_company_via_qichacha(company_keyword)
+
+        self._assign_follow_user(follow_user_keyword)
+        self._select_if_present("#businessTypeCode", first=True)
+        self._select_if_present("#businessSubTypeCode", first=True)
+        self._select_if_present("#industryStatusCode", first=True)
+        self._select_if_present("#industryCode", first=True)
+        self._select_if_present("#customerGradeCode", first=True)
+        self._select_if_present("#purchasePreferenceCode", first=True)
+
+        if company_email:
+            self._fill_if_present("#email",

@@ -16,10 +16,13 @@
   python scripts/create_inquiry.py --env uat --operate-via cn --source internal --mall en --form en --status 待转单
 
 环境说明:
-  默认 test → 加载 .env.en.test（当前测试环境）
-  --env uat  → 加载 .env.en.uat
-  --env prod → 加载 .env.en.prod（默认拒绝造数，须 --allow-prod-seed）
+  默认 test → 同时加载 .env.en.test + .env.cn.test
+  --env uat  → .env.en.uat + .env.cn.uat
+  --env prod → .env.en.prod + .env.cn.prod（默认拒绝造数，须 --allow-prod-seed）
+  中英文主数据分文件：英文用 CRM_INQUIRY_EN_* / EPAK_*；中文用 CRM_INQUIRY_BUYER_* 等
   --operate-via en|cn → 英文单操作站点（默认 en；cn 不可做到已完成）
+  中文站造数示例:
+  python scripts/create_inquiry.py --env test --source internal --mall cn --form cn --type 通用品 --status 待出厂报价
 
 子单 JSON 字段（每条子单可单独配置）:
   ask_price_type   通用品 / 定制品
@@ -69,10 +72,18 @@ from api.services.crm_inquiry_status import (
 from config.settings import (
     API_TIMEOUT_SECONDS,
     CRM_INQUIRY_ASK_PRICE_TYPE,
+    CRM_INQUIRY_BUYER_MEMBER_ID,
+    CRM_INQUIRY_BUYER_MEMBER_NAME,
+    CRM_INQUIRY_CATEGORY_FULL_ID,
     CRM_INQUIRY_CREATE_SOURCE,
+    CRM_INQUIRY_EN_BUYER_MEMBER_ID,
+    CRM_INQUIRY_EN_BUYER_MEMBER_NAME,
+    CRM_INQUIRY_EN_CATEGORY_FULL_ID,
+    CRM_INQUIRY_EN_RELATION_SKU_IDS,
     CRM_INQUIRY_FORM,
     CRM_INQUIRY_MALL,
     CRM_INQUIRY_OPERATE_VIA,
+    CRM_INQUIRY_RELATION_SKU_IDS,
     CRM_INQUIRY_SUBS_JSON,
     CRM_INQUIRY_SUPPLIER_AUTH_API_URL,
     CRM_INQUIRY_SUPPLIER_AUTH_ORIGIN,
@@ -95,7 +106,7 @@ def parse_args() -> argparse.Namespace:
         "--env",
         choices=["test", "uat", "prod"],
         default=None,
-        help="英文商城环境；不传默认 test。prod 默认禁止造数，须加 --allow-prod-seed",
+        help="环境（test|uat|prod）；同时加载 .env.en.{env} 与 .env.cn.{env}。prod 默认禁止造数，须加 --allow-prod-seed",
     )
     parser.add_argument(
         "--allow-prod-seed",
@@ -278,11 +289,24 @@ def main() -> int:
                 "platform_base_url": EPAK_PLATFORM_BASE_URL,
                 "cn_platform_base_url": PLATFORM_BASE_URL,
                 "auth_origin": EPAK_PLATFORM_AUTH_ORIGIN,
-                "login_phone": EPAK_LOGIN_PHONE,
+                "en_login_phone": EPAK_LOGIN_PHONE,
+                "cn_login_phone": LOGIN_PHONE,
                 "operate_via": parse_operate_via(args.operate_via).value,
                 "supplier_auth_origin": CRM_INQUIRY_SUPPLIER_AUTH_ORIGIN,
                 "supplier_auth_api_url": CRM_INQUIRY_SUPPLIER_AUTH_API_URL,
                 "supplier_platform_base_url": CRM_INQUIRY_SUPPLIER_PLATFORM_BASE_URL,
+                "en_buyer": {
+                    "member_id": CRM_INQUIRY_EN_BUYER_MEMBER_ID,
+                    "member_name": CRM_INQUIRY_EN_BUYER_MEMBER_NAME,
+                    "category_full_id": CRM_INQUIRY_EN_CATEGORY_FULL_ID,
+                    "relation_sku_ids": CRM_INQUIRY_EN_RELATION_SKU_IDS,
+                },
+                "cn_buyer": {
+                    "member_id": CRM_INQUIRY_BUYER_MEMBER_ID,
+                    "member_name": CRM_INQUIRY_BUYER_MEMBER_NAME,
+                    "category_full_id": CRM_INQUIRY_CATEGORY_FULL_ID,
+                    "relation_sku_ids": CRM_INQUIRY_RELATION_SKU_IDS,
+                },
             }
         )
         print(json.dumps(info, ensure_ascii=False, indent=2))
