@@ -2,6 +2,40 @@
 
 适合团队协作：统一在 Jenkins 查看构建历史、控制台日志、JUnit 结果与截图归档。
 
+## 0. GitHub 连不上时的报错
+
+若 Console 出现：
+
+```text
+fatal: unable to access 'https://github.com/wonku/EpakAutoTest.git/': Failed to connect to github.com port 443
+```
+
+说明失败发生在 **Jenkins 从 GitHub 拉代码** 阶段，流水线还没开始跑 pytest。  
+`Jenkinsfile.esbao-ui` 里的任何 `retry()` **都无法覆盖这一步**。
+
+### 推荐方案：本机目录 + Pipeline script（无需每次 fetch GitHub）
+
+适用：Jenkins 与本机代码在同一台电脑，代码已在 `E:\cursor\Pyautotest`。
+
+1. 打开 Job **Pyautotest-Esbao-UI** → **Configure**
+2. **Pipeline** → Definition 改为 **Pipeline script**（不要用 Pipeline script from SCM）
+3. 打开仓库文件 **`Jenkinsfile.esbao-ui.stable`**，**全文复制**粘贴到 Script 框
+4. 确认 `REPO_DIR = 'E:\\cursor\\Pyautotest'` 路径正确
+5. 保存后 **Build with Parameters**，保持 **`SKIP_GIT_SYNC=true`**（默认已勾选）
+6. **Build Now**
+
+这样构建时 **不访问 GitHub**，直接使用本机已有代码执行易食包 UI 巡检。
+
+以后网络恢复、想在构建前自动 `git pull` 时，取消勾选 `SKIP_GIT_SYNC` 即可（会调用 `scripts/jenkins_git_update_retry.bat`，默认 5 次重试、间隔 90 秒）。
+
+### 继续用 SCM 时的备选
+
+| 配置项 | 建议 |
+|--------|------|
+| Shallow clone | 勾选，depth = 1 |
+| 仓库 URL | 可换镜像，如 `https://gitclone.com/github.com/wonku/EpakAutoTest.git` |
+| Post-build | 安装 Naginator Plugin，失败后自动重试 3 次、间隔 120 秒 |
+
 ## 1. 是否需要 Git？
 
 **需要。** Jenkins 通常从 Git 拉代码再执行流水线，便于：

@@ -1,0 +1,152 @@
+// 易食包商城 UI 巡检 — GitHub 不通时推荐：Pipeline script（粘贴到 Jenkins，不要用 Pipeline script from SCM）
+// 直接使用本机已有代码目录（如 E:\cursor\Pyautotest），GitHub 不通时勾选 SKIP_GIT_SYNC。
+//
+// Job 配置：
+//   Definition = Pipeline script
+//   将本文件内容粘贴到 Script 框
+//   确认 environment.REPO_DIR 指向本机代码路径
+pipeline {
+    agent any
+
+    triggers {
+        cron('H/30 * * * *')
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SKIP_GIT_SYNC',
+            defaultValue: true,
+            description: '跳过 git pull，直接使用 REPO_DIR 已有代码（GitHub 不通时建议勾选）'
+        )
+        booleanParam(
+            name: 'SEND_EMAIL_REPORT',
+            defaultValue: true,
+            description: '执行结束后发送邮件（需在 Jenkins 配置 EMAIL_* 环境变量或 Credentials）'
+        )
+        booleanParam(
+            name: 'INSTALL_PLAYWRIGHT_BROWSER',
+            defaultValue: true,
+            description: '首次或浏览器缺失时安装 Chromium（已安装可关闭以加快构建）'
+        )
+        string(
+            name: 'GIT_UPDATE_MAX_ATTEMPTS',
+            defaultValue: '5',
+            description: 'git 更新失败时的最大重试次数（SKIP_GIT_SYNC 未勾选时生效）'
+        )
+        string(
+            name: 'GIT_UPDATE_WAIT_SECONDS',
+            defaultValue: '90',
+            description: 'git 重试间隔（秒）'
+        )
+    }
+
+    environment {
+        REPO_DIR = 'E:\\cursor\\Pyautotest'
+        GIT_BRANCH = 'main'
+        EMAIL_SMTP_HOST = credentials('EMAIL_SMTP_HOST')
+        EMAIL_FROM = credentials('EMAIL_FROM')
+        EMAIL_USERNAME = credentials('EMAIL_USERNAME')
+        EMAIL_TO = credentials('EMAIL_TO')
+        EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
+        ESB_UI_HEADLESS = 'true'
+        ESB_UI_REPORT_DIR = "${REPO_DIR}/reports/ui/esbao"
+        MALL_UI_NAV_TIMEOUT_MS = '120000'
+        MALL_UI_GOTO_WAIT_UNTIL = 'commit'
+        MALL_UI_GOTO_RETRIES = '3'
+        MALL_UI_DETAIL_IMAGE_WAIT_MS = '90000'
+        MALL_UI_HOME_TEXT_WAIT_MS = '30000'
+        ESB_UI_DETAIL_READY_MS = '60000'
+        PYTHONIOENCODING = 'utf-8'
+        PYTHONUTF8 = '1'
+    }
+
+    stages {
+        stage('Sync repo (retry)') {
+            when {
+                expression { return !params.SKIP_GIT_SYNC }
+            }
+            steps {
+                dir("${env.REPO_DIR}") {
+                    bat """
+                        set GIT_UPDATE_MAX_ATTEMPTS=${params.GIT_UPDATE_MAX_ATTEMPTS}
+                        set GIT_UPDATE_WAIT_SECONDS=${params.GIT_UPDATE_WAIT_SECONDS}
+                        set GIT_BRANCH=${env.GIT_BRANCH}
+                        scripts\\jenkins_git_update_retry.bat
+                    """
+                }
+            }
+        }
+
+        stage('Network precheck') {
+            steps {
+                bat '''
+                    curl -I -m 30 https://auth.esbao.com/
+                    if errorlevel 1 exit /b 1
+                    curl -I -m 30 https://www.esbao.com/
+                    if errorlevel 1 exit /b 1
+                '''
+            }
+        }
+
+        stage('Install Python deps') {
+            steps {
+                dir("${env.REPO_DIR}") {
+                    retry(2) {
+                        bat 'python -m pip install -r requirements.txt'
+                    }
+                }
+            }
+        }
+
+        stage('Install Playwright Chromium') {
+            when {
+                expression { return params.INSTALL_PLAYWRIGHT_BROWSER }
+            }
+            steps {
+                dir("${env.REPO_DIR}") {
+                    bat 'python -m playwright install chromium'
+                }
+            }
+        }
+
+        stage('Esbao mall UI check') {
+            steps {
+                dir("${env.REPO_DIR}") {
+                    script {
+                        def emailFlag = params.SEND_EMAIL_REPORT ? 'true' : 'false'
+                        bat """
+                            chcp 65001 >nul
+                            set SEND_EMAIL_REPORT=${emailFlag}
+                            scripts\\run_esbao_ui_jenkins.bat
+                            if errorlevel 1 exit /b 1
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            dir("${env.REPO_DIR}") {
+                archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+                junit allowEmptyResults: true, testResults: 'reports/junit/esbao-ui.xml'
+            }
+        }
+        success {
+            echo '易食包 UI 巡检通过，报告已归档至 Build Artifacts'
+        }
+        failure {
+            echo '易食包 UI 巡检失败，请查看 Console、reports/ui/esbao 截图与 report.json'
+            dir("${env.REPO_DIR}") {
+                bat 'if exist reports\\email-last.json type reports\\email-last.json'
+            }
+        }
+    }
+}
