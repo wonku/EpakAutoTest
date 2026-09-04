@@ -7,7 +7,20 @@ from pages.mall.base import MallHomePageBase
 
 class EsbaoMallHomePage(MallHomePageBase):
     HOT_SECTION_TITLE = "热销爆款"
-    HOT_PRODUCT_ITEM = ".carousel_item_3dcef7"
+    # CSS Modules 哈希会变：旧 .carousel_item_3dcef7 → 新 ...__carousel_item
+    HOT_PRODUCT_ITEM = (
+        '[class*="carousel_item"]:not([class*="carousel_item_wrapper"])'
+        ':not([class*="carousel_item_box"])'
+    )
+    # 在浏览器内筛「类名 token 以 carousel_item 结尾」的商品卡（兼容新旧 hash）
+    _HOT_ITEM_JS = r"""
+      const hotItemNodes = () => Array.from(
+        document.querySelectorAll('[class*="carousel_item"]')
+      ).filter(el => {
+        const parts = String(el.className || '').split(/\s+/);
+        return parts.some(p => /(^|_)carousel_item$/.test(p));
+      });
+    """
     AUTH_HOST_MARKERS = ("auth.esbao.com",)
 
     REQUIRED_TEXTS = [
@@ -79,6 +92,9 @@ class EsbaoMallHomePage(MallHomePageBase):
     def _list_hot_product_candidates(self, preferred_name: str | None = None) -> list[dict]:
         return self.page.evaluate(
             """(preferredName) => {
+              """
+            + self._HOT_ITEM_JS
+            + """
               const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
               const isClickable = (el) => {
                 const r = el.getBoundingClientRect();
@@ -91,7 +107,7 @@ class EsbaoMallHomePage(MallHomePageBase):
               };
               const seen = new Set();
               const items = [];
-              for (const el of document.querySelectorAll('.carousel_item_3dcef7')) {
+              for (const el of hotItemNodes()) {
                 if (!isClickable(el)) continue;
                 const name = normalize(el.innerText);
                 if (!name || seen.has(name)) continue;
@@ -118,8 +134,11 @@ class EsbaoMallHomePage(MallHomePageBase):
 
         self.page.evaluate(
             """(name) => {
+              """
+            + self._HOT_ITEM_JS
+            + """
               const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
-              const target = Array.from(document.querySelectorAll('.carousel_item_3dcef7')).find(el => {
+              const target = hotItemNodes().find(el => {
                 const slide = el.closest('.slick-slide');
                 if (slide && slide.classList.contains('slick-cloned')) return false;
                 return normalize(el.innerText) === name;
@@ -132,8 +151,11 @@ class EsbaoMallHomePage(MallHomePageBase):
 
         refreshed = self.page.evaluate(
             """(name) => {
+              """
+            + self._HOT_ITEM_JS
+            + """
               const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
-              const target = Array.from(document.querySelectorAll('.carousel_item_3dcef7')).find(el => {
+              const target = hotItemNodes().find(el => {
                 const slide = el.closest('.slick-slide');
                 if (slide && slide.classList.contains('slick-cloned')) return false;
                 return normalize(el.innerText) === name;
@@ -160,8 +182,11 @@ class EsbaoMallHomePage(MallHomePageBase):
         self.page.mouse.click(refreshed["x"], refreshed["y"])
         self.page.evaluate(
             """(name) => {
+              """
+            + self._HOT_ITEM_JS
+            + """
               const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
-              const target = Array.from(document.querySelectorAll('.carousel_item_3dcef7')).find(el => {
+              const target = hotItemNodes().find(el => {
                 const slide = el.closest('.slick-slide');
                 if (slide && slide.classList.contains('slick-cloned')) return false;
                 return normalize(el.innerText) === name;
