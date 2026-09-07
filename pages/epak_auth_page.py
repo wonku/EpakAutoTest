@@ -74,7 +74,7 @@ class EpakAuthPage(MallAuthPageBase):
             home_url=home_url,
             url_must_contain="epakgroup.com",
             url_must_not_contain="auth.epakgroup.com",
-            required_texts=("EPAK One-Stop Platform for Food Packaging", "Home"),
+            required_texts=("All-in-One Packaging Product Supply", "Start Your Sourcing"),
         )
         logo = self.page.locator(self.logo_selector).first
         try:

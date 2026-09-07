@@ -1,4 +1,5 @@
 // EPAK 英文商城 UI 巡检 — 建议在 Jenkins 中单独建 Pipeline Job，Script Path 填此文件
+// GitHub 不通时请改用 Jenkinsfile.epak-ui.stable（Pipeline script，不要用 from SCM）
 pipeline {
     agent any
 

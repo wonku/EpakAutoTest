@@ -82,7 +82,7 @@ def run_mall_inspection(mall_ui_page, site: MallInspectionSite, request) -> None
             section_shot = (
                 f"03-{prefix}-mall-home-hot-section.png"
                 if site.site_id == "esbao"
-                else f"04-{prefix}-mall-home-one-stop.png"
+                else f"04-{prefix}-mall-home-supply.png"
             )
             collector.save_screenshot(mall_page, section_shot, full_page=False)
             collector.add_step("首页全页检查", "pass", **homepage_checks)

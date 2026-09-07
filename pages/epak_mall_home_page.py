@@ -10,17 +10,19 @@ from pages.mall.base import MallHomePageBase
 
 
 class EpakMallHomePage(MallHomePageBase):
-    ONE_STOP_SECTION_TITLE = "EPAK One-Stop Platform for Food Packaging"
+    SUPPLY_SECTION_TITLE = "All-in-One Packaging Product Supply"
+    CATEGORY_CTA_NAMES = ("Find What You Need", "Grow Your Business")
+    PRODUCT_CARD = '[class*="product_item_box"]'
     POPUP_NO_THANKS_PATTERN = re.compile(r"No.?Thanks", re.IGNORECASE)
     AUTH_HOST_MARKERS = ("auth.epakgroup.com",)
 
     REQUIRED_TEXTS = [
         # 保留主体模块标题，避免顶部导航/运营位文案变化造成误判。
-        ONE_STOP_SECTION_TITLE,
-        "Category Division",
-        "You May Require",
-        "EPAK Help Center",
-        "About EPAK Company",
+        SUPPLY_SECTION_TITLE,
+        "Ready-to-Buy Packaging Bundles",
+        "Packaging Solutions for Diverse Applications",
+        "About EPAK: Your Team Behind the Tech",
+        "Quality & Compliance Assurance",
     ]
 
     def assert_on_home(self) -> None:
@@ -86,51 +88,66 @@ class EpakMallHomePage(MallHomePageBase):
             scroll_target_js=(
                 """() => {
               const target = Array.from(document.querySelectorAll('*'))
-                .find(el => (el.innerText || '').trim() === 'EPAK One-Stop Platform for Food Packaging');
+                .find(el => (el.innerText || '').trim() === 'All-in-One Packaging Product Supply');
               target?.scrollIntoView({block: 'center'});
             }"""
             ),
         )
 
-    def _prepare_one_stop_section(self) -> None:
+    def _disable_float_header(self) -> None:
         self.page.evaluate(
             """() => {
-              const target = Array.from(document.querySelectorAll('*'))
-                .find(el => (el.innerText || '').trim() === 'EPAK One-Stop Platform for Food Packaging');
-              target?.scrollIntoView({block: 'center'});
               const floatHeader = document.querySelector('#floatSearch');
               if (floatHeader) floatHeader.style.pointerEvents = 'none';
             }"""
         )
-        self.page.wait_for_timeout(500)
 
-    def _list_one_stop_product_candidates(self, preferred_name: str | None = None) -> list[dict]:
+    def _open_category_listing(self) -> None:
+        if "/category" in self.page.url:
+            return
+        cta = None
+        for name in self.CATEGORY_CTA_NAMES:
+            locator = self.page.get_by_role("link", name=name)
+            if locator.count() > 0:
+                cta = locator.first
+                break
+        if cta is None:
+            category_url = self.home_url.rstrip("/") + "/category"
+            self.page.goto(
+                category_url,
+                wait_until=settings.MALL_UI_GOTO_WAIT_UNTIL,
+                timeout=settings.MALL_UI_NAV_TIMEOUT_MS,
+            )
+        else:
+            cta.click(timeout=10000)
+        try:
+            self.page.wait_for_url("**/category**", timeout=settings.MALL_UI_NAV_TIMEOUT_MS)
+        except PlaywrightTimeoutError:
+            if "/category" not in self.page.url:
+                raise AssertionError(f"未进入商品分类页: {self.page.url}")
+        self.page.locator(self.PRODUCT_CARD).first.wait_for(
+            state="visible",
+            timeout=30000,
+        )
+
+    def _list_catalog_product_candidates(self, preferred_name: str | None = None) -> list[dict]:
         return self.page.evaluate(
             """(preferredName) => {
               const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
-              const isClickable = (el) => {
-                const r = el.getBoundingClientRect();
-                if (r.width < 20 || r.height < 20) return false;
-                if (r.bottom <= 0 || r.top >= window.innerHeight) return false;
-                const style = window.getComputedStyle(el);
-                return style.visibility !== 'hidden' && style.display !== 'none';
-              };
-              const section = document.querySelector('[class*="current_situation_wrapper"]');
-              if (!section) return [];
+              const preferred = (preferredName || '').trim().toLowerCase();
+              const cards = Array.from(document.querySelectorAll('[class*="product_item_box"]'));
               const items = [];
               const seen = new Set();
-              for (const link of section.querySelectorAll('a[href*="/products/"]')) {
-                if (!isClickable(link)) continue;
-                const name = normalize(link.innerText);
+              for (const card of cards) {
+                const img = card.querySelector('img[alt]');
+                const name = normalize(img?.getAttribute('alt') || card.querySelector('.ellipsis3')?.innerText || '');
                 if (!name || seen.has(name)) continue;
+                const rect = card.getBoundingClientRect();
+                if (rect.width < 20 || rect.height < 20) continue;
                 seen.add(name);
-                const rect = link.getBoundingClientRect();
                 items.push({
                   name,
-                  href: link.href,
-                  x: rect.x + rect.width / 2,
-                  y: rect.y + rect.height / 2,
-                  preferred: !!(preferredName && name.includes(preferredName)),
+                  preferred: !!(preferred && name.toLowerCase().includes(preferred)),
                 });
               }
               items.sort((a, b) => Number(b.preferred) - Number(a.preferred));
@@ -139,45 +156,20 @@ class EpakMallHomePage(MallHomePageBase):
             preferred_name or "",
         )
 
-    def _click_one_stop_product_candidate(self, candidate: dict) -> tuple[bool, Page, str]:
-        self._prepare_one_stop_section()
+    def _click_catalog_product_candidate(self, candidate: dict) -> tuple[bool, Page, str]:
+        self._disable_float_header()
         product_name = candidate["name"]
-        product_href = candidate["href"]
         url_before = self.page.url
-        detail_page = self.page
-
-        self.page.evaluate(
-            """(href) => {
-              const section = document.querySelector('[class*="current_situation_wrapper"]');
-              const target = section
-                ? Array.from(section.querySelectorAll('a[href*="/products/"]'))
-                    .find(link => link.href === href || link.href.endsWith(href.split('/products/')[1]))
-                : null;
-              target?.scrollIntoView({block: 'center', inline: 'center'});
-            }""",
-            product_href,
-        )
-        self.page.wait_for_timeout(400)
-
-        refreshed = self.page.evaluate(
-            """(href) => {
-              const section = document.querySelector('[class*="current_situation_wrapper"]');
-              const target = section
-                ? Array.from(section.querySelectorAll('a[href*="/products/"]'))
-                    .find(link => link.href === href || link.href.endsWith(href.split('/products/')[1]))
-                : null;
-              if (!target) return null;
-              const rect = target.getBoundingClientRect();
-              return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
-            }""",
-            product_href,
-        )
-        if not refreshed:
+        img = self.page.locator(self.PRODUCT_CARD).get_by_alt_text(product_name, exact=True).first
+        try:
+            img.scroll_into_view_if_needed(timeout=10000)
+        except PlaywrightTimeoutError:
             return False, self.page, product_name
 
+        detail_page = self.page
         try:
-            with self.page.context.expect_page(timeout=5000) as popup_info:
-                self.page.mouse.click(refreshed["x"], refreshed["y"])
+            with self.page.context.expect_page(timeout=8000) as popup_info:
+                img.click(timeout=10000)
             detail_page = popup_info.value
             detail_page.wait_for_load_state("domcontentloaded", timeout=60000)
             if EpakProductDetailPage.is_product_detail_url(detail_page.url):
@@ -185,18 +177,10 @@ class EpakMallHomePage(MallHomePageBase):
         except PlaywrightTimeoutError:
             pass
 
-        self.page.mouse.click(refreshed["x"], refreshed["y"])
-        self.page.evaluate(
-            """(href) => {
-              const section = document.querySelector('[class*="current_situation_wrapper"]');
-              const target = section
-                ? Array.from(section.querySelectorAll('a[href*="/products/"]'))
-                    .find(link => link.href === href || link.href.endsWith(href.split('/products/')[1]))
-                : null;
-              target?.click();
-            }""",
-            product_href,
-        )
+        try:
+            img.click(timeout=10000)
+        except PlaywrightTimeoutError:
+            pass
 
         resolved = self._resolve_detail_page(url_before, detail_page)
         if resolved:
@@ -224,19 +208,21 @@ class EpakMallHomePage(MallHomePageBase):
             return True, resolved, product_name
         return False, self.page, product_name
 
-    def open_any_one_stop_product(self, preferred_name: str | None = None) -> tuple[str, Page]:
+    def open_any_catalog_product(self, preferred_name: str | None = None) -> tuple[str, Page]:
         self.dismiss_cookie_banner_if_present()
-        self._prepare_one_stop_section()
+        self.close_subscribe_popup()
+        self._open_category_listing()
+        self.dismiss_cookie_banner_if_present()
+        self.close_subscribe_popup()
+        self._disable_float_header()
 
-        candidates = self._list_one_stop_product_candidates(preferred_name)
+        candidates = self._list_catalog_product_candidates(preferred_name)
         if not candidates:
-            raise AssertionError(
-                f"未找到「{self.ONE_STOP_SECTION_TITLE}」下可点击的商品链接"
-            )
+            raise AssertionError("分类页未找到可点击的商品卡片")
 
         errors: list[str] = []
         for candidate in candidates:
-            navigated, detail_page, product_name = self._click_one_stop_product_candidate(candidate)
+            navigated, detail_page, product_name = self._click_catalog_product_candidate(candidate)
             if not navigated:
                 errors.append(product_name)
                 continue
@@ -251,9 +237,10 @@ class EpakMallHomePage(MallHomePageBase):
                 continue
 
         tried = ", ".join(errors[:5])
-        raise AssertionError(
-            f"「{self.ONE_STOP_SECTION_TITLE}」下尝试多个商品后均未成功跳转，已尝试: {tried}"
-        )
+        raise AssertionError(f"分类页尝试多个商品后均未成功跳转，已尝试: {tried}")
+
+    def open_any_one_stop_product(self, preferred_name: str | None = None) -> tuple[str, Page]:
+        return self.open_any_catalog_product(preferred_name)
 
     def _resolve_detail_page(self, url_before: str, current_page: Page) -> Page | None:
         if (

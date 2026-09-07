@@ -27,7 +27,7 @@ EPAK_SITE = MallInspectionSite(
     site_id="epak",
     feature="EPAK 英文商城",
     story="生产环境首页巡检",
-    title="登录页进入商城首页并检查 One-Stop 商品跳转",
+    title="登录页进入商城首页并检查分类商品跳转",
     email_label="EPAK 英文商城",
     report_dir=Path(settings.EPAK_UI_REPORT_DIR),
     suite_name="epak_mall_ui",
@@ -38,7 +38,7 @@ EPAK_SITE = MallInspectionSite(
     auth_page_factory=lambda page, url: EpakAuthPage(page, url),
     home_page_factory=lambda page, url: EpakMallHomePage(page, url),
     detail_page_factory=lambda page: EpakProductDetailPage(page),
-    open_product=lambda home: home.open_any_one_stop_product(
+    open_product=lambda home: home.open_any_catalog_product(
         preferred_name=settings.EPAK_UI_PRODUCT_KEYWORD or None
     ),
     pre_home_checks=_epak_pre_home_checks,
