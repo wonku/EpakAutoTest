@@ -177,6 +177,10 @@ class EpakMallHomePage(MallHomePageBase):
         except PlaywrightTimeoutError:
             pass
 
+        resolved = self._resolve_detail_page(url_before, detail_page)
+        if resolved:
+            return True, resolved, product_name
+
         try:
             img.click(timeout=10000)
         except PlaywrightTimeoutError:
@@ -195,7 +199,7 @@ class EpakMallHomePage(MallHomePageBase):
                   const path = url.split('epakgroup.com')[1]?.split('?')[0]?.replace(/\\/$/, '') || '/';
                   return path && path !== '/' && path.includes('/products/');
                 }""",
-                url_before,
+                arg=url_before,
                 timeout=20000,
             )
             if EpakProductDetailPage.is_product_detail_url(self.page.url):

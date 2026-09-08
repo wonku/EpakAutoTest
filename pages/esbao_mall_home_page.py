@@ -130,7 +130,6 @@ class EsbaoMallHomePage(MallHomePageBase):
         self._prepare_hot_product_section()
         product_name = candidate["name"]
         url_before = self.page.url
-        detail_page = self.page
 
         self.page.evaluate(
             """(name) => {
@@ -161,44 +160,31 @@ class EsbaoMallHomePage(MallHomePageBase):
                 return normalize(el.innerText) === name;
               });
               if (!target) return null;
-              const rect = target.getBoundingClientRect();
-              return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+              const img = Array.from(target.querySelectorAll('img')).find((node) => {
+                const r = node.getBoundingClientRect();
+                return r.width > 40 && r.height > 40;
+              });
+              const el = img || target;
+              const rect = el.getBoundingClientRect();
+              const y = img
+                ? rect.y + rect.height / 2
+                : rect.y + Math.min(80, rect.height * 0.35);
+              return {x: rect.x + rect.width / 2, y};
             }""",
             product_name,
         )
         if not refreshed:
             return False, self.page, product_name
 
-        try:
-            with self.page.context.expect_page(timeout=5000) as popup_info:
-                self.page.mouse.click(refreshed["x"], refreshed["y"])
-            detail_page = popup_info.value
-            detail_page.wait_for_load_state("domcontentloaded", timeout=60000)
-            if EsbaoProductDetailPage.is_product_detail_url(detail_page.url):
-                return True, detail_page, product_name
-        except PlaywrightTimeoutError:
-            pass
-
-        self.page.mouse.click(refreshed["x"], refreshed["y"])
-        self.page.evaluate(
-            """(name) => {
-              """
-            + self._HOT_ITEM_JS
-            + """
-              const normalize = (text) => (text || '').trim().replace(/\\s+/g, ' ');
-              const target = hotItemNodes().find(el => {
-                const slide = el.closest('.slick-slide');
-                if (slide && slide.classList.contains('slick-cloned')) return false;
-                return normalize(el.innerText) === name;
-              });
-              target?.click();
-            }""",
-            product_name,
-        )
-
-        resolved = self._resolve_detail_page(url_before)
+        self._click_hot_product_at(refreshed)
+        resolved = self._wait_for_opened_detail_page(url_before, timeout_ms=8000)
         if resolved:
-            return True, resolved[0], product_name
+            return True, self._keep_single_detail_page(resolved[0]), product_name
+
+        self._click_hot_product_at(refreshed)
+        resolved = self._wait_for_opened_detail_page(url_before, timeout_ms=8000)
+        if resolved:
+            return True, self._keep_single_detail_page(resolved[0]), product_name
 
         try:
             self.page.wait_for_function(
@@ -209,7 +195,7 @@ class EsbaoMallHomePage(MallHomePageBase):
                   const path = url.split('esbao.com')[1]?.split('?')[0]?.replace(/\\/$/, '') || '/';
                   return path && path !== '/';
                 }""",
-                url_before,
+                arg=url_before,
                 timeout=20000,
             )
             if EsbaoProductDetailPage.is_product_detail_url(self.page.url):
@@ -219,8 +205,47 @@ class EsbaoMallHomePage(MallHomePageBase):
 
         resolved = self._resolve_detail_page(url_before)
         if resolved:
-            return True, resolved[0], product_name
+            return True, self._keep_single_detail_page(resolved[0]), product_name
         return False, self.page, product_name
+
+    def _click_hot_product_at(self, point: dict) -> None:
+        try:
+            with self.page.context.expect_page(timeout=5000) as popup_info:
+                self.page.mouse.click(point["x"], point["y"])
+            popup = popup_info.value
+            popup.wait_for_load_state("domcontentloaded", timeout=60000)
+        except PlaywrightTimeoutError:
+            pass
+
+    def _wait_for_opened_detail_page(
+        self,
+        url_before: str,
+        *,
+        timeout_ms: int,
+    ) -> tuple[Page, str] | None:
+        elapsed = 0
+        poll_ms = 200
+        while elapsed <= timeout_ms:
+            resolved = self._resolve_detail_page(url_before)
+            if resolved:
+                return resolved
+            self.page.wait_for_timeout(poll_ms)
+            elapsed += poll_ms
+        return None
+
+    def _keep_single_detail_page(self, keep: Page) -> Page:
+        for extra in list(self.page.context.pages):
+            if extra is keep:
+                continue
+            if not EsbaoProductDetailPage.is_product_detail_url(extra.url):
+                continue
+            try:
+                extra.close()
+            except Exception:
+                pass
+        keep.bring_to_front()
+        self.page = keep
+        return keep
 
     def _resolve_detail_page(self, url_before: str) -> tuple[Page, str] | None:
         if (
