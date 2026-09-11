@@ -364,6 +364,17 @@ ESB_UI_IMAGE_SETTLE_MS = int(os.getenv("ESB_UI_IMAGE_SETTLE_MS", "3000"))
 ESB_UI_HOME_IMAGE_WAIT_MS = int(os.getenv("ESB_UI_HOME_IMAGE_WAIT_MS", "20000"))
 ESB_UI_DETAIL_READY_MS = int(os.getenv("ESB_UI_DETAIL_READY_MS", "60000"))
 ESB_UI_HOT_PRODUCT_KEYWORD = os.getenv("ESB_UI_HOT_PRODUCT_KEYWORD", "").strip()
+# 生产会员中心（日常 UI 巡检默认现网，只打开页面不改数据）
+ESB_MEMBER_HOME_URL = os.getenv(
+    "ESB_MEMBER_HOME_URL",
+    "https://platform.esbao.com/memberCenter/homeAbility",
+).strip()
+ESB_LOGIN_PHONE = os.getenv("ESB_LOGIN_PHONE", LOGIN_PHONE).strip()
+ESB_LOGIN_PASSWORD_ENCRYPTED = os.getenv(
+    "ESB_LOGIN_PASSWORD_ENCRYPTED",
+    LOGIN_PASSWORD_ENCRYPTED,
+).strip()
+
 
 MALL_UI_NAV_TIMEOUT_MS = int(os.getenv("MALL_UI_NAV_TIMEOUT_MS", "120000"))
 MALL_UI_AUTH_READY_TIMEOUT_MS = int(
@@ -466,6 +477,14 @@ EPAK_UI_REPORT_DIR = os.getenv(
     str(PROJECT_ROOT / "reports" / "ui" / "epak"),
 ).strip()
 EPAK_UI_PRODUCT_KEYWORD = os.getenv("EPAK_UI_PRODUCT_KEYWORD", "Slant Spout").strip()
+# 生产会员中心（日常 UI 巡检默认现网，与 EPAK_ENV 测试平台分离）
+EPAK_MEMBER_HOME_URL = os.getenv(
+    "EPAK_MEMBER_HOME_URL",
+    "https://platform.epakgroup.com/memberCenter/homeAbility",
+).strip()
+EPAK_UI_MENU_WAIT_MS = int(os.getenv("EPAK_UI_MENU_WAIT_MS", "2500"))
+EPAK_UI_MENU_EMPTY_MIN_CHARS = int(os.getenv("EPAK_UI_MENU_EMPTY_MIN_CHARS", "20"))
+
 
 ORDER_AGENT_CREATE_API_URL = os.getenv(
     "ORDER_AGENT_CREATE_API_URL",

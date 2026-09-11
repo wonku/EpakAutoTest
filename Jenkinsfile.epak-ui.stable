@@ -13,7 +13,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 30, unit: 'MINUTES')
+        timeout(time: 50, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '20'))
         disableConcurrentBuilds()
     }
@@ -56,6 +56,9 @@ pipeline {
         EMAIL_PASSWORD = credentials('EMAIL_PASSWORD')
         ESB_UI_HEADLESS = 'true'
         EPAK_UI_REPORT_DIR = "${REPO_DIR}/reports/ui/epak"
+        EPAK_AUTH_URL = 'https://auth.epakgroup.com/user/login'
+        EPAK_MALL_HOME_URL = 'https://www.epakgroup.com/'
+        EPAK_MEMBER_HOME_URL = 'https://platform.epakgroup.com/memberCenter/homeAbility'
         MALL_UI_NAV_TIMEOUT_MS = '120000'
         MALL_UI_GOTO_WAIT_UNTIL = 'commit'
         MALL_UI_GOTO_RETRIES = '3'
@@ -88,6 +91,8 @@ pipeline {
                     curl -I -m 30 https://auth.epakgroup.com/user/login
                     if errorlevel 1 exit /b 1
                     curl -I -m 30 https://www.epakgroup.com/
+                    if errorlevel 1 exit /b 1
+                    curl -I -m 30 https://platform.epakgroup.com/
                     if errorlevel 1 exit /b 1
                 '''
             }

@@ -30,6 +30,8 @@ class MallInspectionSite:
     detail_page_factory: Callable
     open_product: Callable
     pre_home_checks: Callable | None = None
+    post_home_checks: Callable | None = None
+    after_product_checks: Callable | None = None
 
     @property
     def email_report_label(self) -> str:
@@ -87,6 +89,13 @@ def run_mall_inspection(mall_ui_page, site: MallInspectionSite, request) -> None
             collector.save_screenshot(mall_page, section_shot, full_page=False)
             collector.add_step("首页全页检查", "pass", **homepage_checks)
 
+        if site.post_home_checks:
+            with allure.step("检查首页稳定入口可点击"):
+                entry_checks = site.post_home_checks(home, collector, mall_page, prefix) or {}
+                mall_page = home.page
+                collector.add_check("homepage_entry_points", entry_checks)
+                collector.add_step("首页入口检查", "pass", **entry_checks)
+
         with allure.step("点击商品并校验详情页"):
             product_name, mall_page = site.open_product(home)
             detail = site.detail_page_factory(mall_page)
@@ -107,13 +116,19 @@ def run_mall_inspection(mall_ui_page, site: MallInspectionSite, request) -> None
                 product_name=product_name,
                 url=mall_page.url,
             )
+
+        if site.after_product_checks:
+            with allure.step("附加页面检查"):
+                site.after_product_checks(mall_page, collector, prefix)
     except Exception as exc:
         exitstatus = 1
         collector.mark_failed(str(exc))
         collector.add_step("执行失败", "fail", error=str(exc))
         try:
-            active = mall_page if mall_page else mall_ui_page
-            collector.save_screenshot(active, f"99-{prefix}-failure.png", full_page=False)
+            fail_shot = collector.report_root / f"99-{prefix}-failure.png"
+            if not fail_shot.exists():
+                active = mall_page if mall_page else mall_ui_page
+                collector.save_screenshot(active, f"99-{prefix}-failure.png", full_page=False)
         except Exception:
             pass
         raise

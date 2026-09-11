@@ -14,7 +14,7 @@ class EpakMallHomePage(MallHomePageBase):
     CATEGORY_CTA_NAMES = ("Find What You Need", "Grow Your Business")
     PRODUCT_CARD = '[class*="product_item_box"]'
     POPUP_NO_THANKS_PATTERN = re.compile(r"No.?Thanks", re.IGNORECASE)
-    AUTH_HOST_MARKERS = ("auth.epakgroup.com",)
+    AUTH_HOST_MARKERS = ("auth.epakgroup.com", "/login")
 
     REQUIRED_TEXTS = [
         # 保留主体模块标题，避免顶部导航/运营位文案变化造成误判。
@@ -24,6 +24,86 @@ class EpakMallHomePage(MallHomePageBase):
         "About EPAK: Your Team Behind the Tech",
         "Quality & Compliance Assurance",
     ]
+    # 首页各楼层可点击入口（物料砖块/套装卡/认证标点了不跳转，只巡 CTA 与顶栏）
+    HOME_MODULE_JUMPS: tuple[dict, ...] = (
+        {
+            "module": "顶部导航",
+            "name": "Product Info",
+            "url_fragment": "/solutions",
+            "hints": ("Product Info", "Solutions", "Packaging"),
+        },
+        {
+            "module": "顶部导航",
+            "name": "News & Updates",
+            "url_fragment": "/insight",
+            "hints": ("News", "Insight", "Updates"),
+        },
+        {
+            "module": "顶部导航",
+            "name": "Contact Us",
+            "url_fragment": "/contact",
+            "hints": ("Contact", "Email", "Message"),
+        },
+        {
+            "module": "首屏 Hero",
+            "name": "Start Your Sourcing",
+            "url_fragment": "/contact",
+            "hints": ("Contact", "Email", "Message"),
+        },
+        {
+            "module": "首屏 Hero",
+            "name": "Become a Distributor",
+            "url_fragment": "/become-a-partner",
+            "hints": ("Distributor", "Partner", "Become"),
+        },
+        {
+            "module": "All-in-One Packaging Product Supply",
+            "name": "Grow Your Business",
+            "url_fragment": "/category",
+            "hints": (),
+        },
+        {
+            "module": "Ready-to-Buy Packaging Bundles",
+            "name": "Find What You Need",
+            "url_fragment": "/category",
+            "hints": (),
+        },
+        {
+            "module": "Ready-to-Buy Packaging Bundles",
+            "name": "Inquiry Now",
+            "url_fragment": "/contact",
+            "hints": ("Contact", "Email", "Message"),
+        },
+        {
+            "module": "Packaging Solutions for Diverse Applications",
+            "name": "Get Packaging Recommendations",
+            "url_fragment": "/solutions",
+            "hints": ("Product Info", "Solutions", "Packaging"),
+        },
+        {
+            "module": "Everything You Need One Packaging Partner",
+            "name": "Discuss Your Project",
+            "url_fragment": "/contact",
+            "hints": ("Contact", "Email", "Message"),
+        },
+        {
+            "module": "Beyond Supply Built for Growth",
+            "name": "Talk About Your Goals",
+            "url_fragment": "/contact",
+            "hints": ("Contact", "Email", "Message"),
+        },
+        {
+            "module": "About EPAK: Your Team Behind the Tech",
+            "name": "Learn About EPAK",
+            "url_fragment": "/about-us",
+            "hints": ("About", "EPAK", "Team"),
+        },
+    )
+    _DEST_ERROR_RE = re.compile(
+        r"(?<!\d)404(?!\d)|(?<!\d)500(?!\d)|page\s*not\s*found|not\s*found|"
+        r"system error|service unavailable|系统错误|服务异常|页面不存在",
+        re.I,
+    )
 
     def assert_on_home(self) -> None:
         super().assert_on_home()
@@ -93,6 +173,235 @@ class EpakMallHomePage(MallHomePageBase):
             }"""
             ),
         )
+
+    def assert_home_entry_points(self) -> dict:
+        """点开每个首页模块的稳定 CTA，检查跳转页能加载，再回到首页。"""
+        jumps: list[dict] = []
+        failures: list[str] = []
+        for spec in self.HOME_MODULE_JUMPS:
+            label = f"{spec['module']}「{spec['name']}」"
+            try:
+                url = self._open_module_jump(spec)
+                jumps.append(
+                    {
+                        "module": spec["module"],
+                        "name": spec["name"],
+                        "url": url,
+                        "status": "ok",
+                    }
+                )
+                print(f"[ok] {label} -> {url}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                message = str(exc)
+                jumps.append(
+                    {
+                        "module": spec["module"],
+                        "name": spec["name"],
+                        "url": self.page.url,
+                        "status": "fail",
+                        "error": message,
+                    }
+                )
+                failures.append(f"{label}: {message}")
+                print(f"[fail] {label} | {self.page.url} | {message}", flush=True)
+            finally:
+                self._ensure_on_home()
+        if failures:
+            raise AssertionError(
+                "首页模块跳转失败 "
+                f"{len(failures)}/{len(self.HOME_MODULE_JUMPS)}: "
+                + "; ".join(failures[:8])
+            )
+        return {"jumps": jumps, "total": len(jumps)}
+
+    def _ensure_on_home(self) -> None:
+        self.close_subscribe_popup()
+        self.dismiss_cookie_banner_if_present()
+        path = (self.page.url.split("epakgroup.com", 1)[-1].split("?")[0].rstrip("/") or "/")
+        need_home = "auth.epakgroup.com" in self.page.url or path not in ("", "/")
+        if need_home:
+            last_error: Exception | None = None
+            for attempt in range(1, max(settings.MALL_UI_GOTO_RETRIES, 1) + 1):
+                try:
+                    self.page.goto(
+                        self.home_url,
+                        wait_until=settings.MALL_UI_GOTO_WAIT_UNTIL,
+                        timeout=settings.MALL_UI_NAV_TIMEOUT_MS,
+                    )
+                    last_error = None
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    last_error = exc
+                    if attempt < settings.MALL_UI_GOTO_RETRIES:
+                        self.page.wait_for_timeout(2000)
+            if last_error:
+                raise AssertionError(f"返回首页失败: {last_error}") from last_error
+        self.close_subscribe_popup()
+        self.dismiss_cookie_banner_if_present()
+        self.page.get_by_text(self.SUPPLY_SECTION_TITLE, exact=True).first.wait_for(
+            state="visible",
+            timeout=30000,
+        )
+
+    def _module_cta_locator(self, name: str):
+        link = self.page.locator("a[href]").filter(has_text=name)
+        if link.count():
+            return link.first
+        role = self.page.get_by_role("link", name=name)
+        if role.count():
+            return role.first
+        text = self.page.get_by_text(name, exact=True)
+        if text.count():
+            return text.first
+        return None
+
+    def _open_module_jump(self, spec: dict) -> str:
+        self._disable_float_header()
+        self.close_subscribe_popup()
+        locator = self._module_cta_locator(spec["name"])
+        if locator is None:
+            raise AssertionError(f"未找到入口「{spec['name']}」")
+        locator.scroll_into_view_if_needed(timeout=10000)
+        self.page.evaluate(
+            """() => {
+              const floatHeader = document.querySelector('#floatSearch, [class*="floatSearch"]');
+              if (floatHeader) floatHeader.style.pointerEvents = 'none';
+            }"""
+        )
+        return self._click_and_expect_url(
+            locator,
+            spec["url_fragment"],
+            f"{spec['module']}「{spec['name']}」",
+            spec["hints"],
+        )
+
+    def _wait_for_http_url(self, page: Page) -> None:
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=settings.MALL_UI_NAV_TIMEOUT_MS)
+        except PlaywrightTimeoutError:
+            pass
+        try:
+            page.wait_for_function(
+                """() => {
+                  const href = location.href || '';
+                  return href.startsWith('http') && href !== 'about:blank';
+                }""",
+                timeout=20000,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        try:
+            page.wait_for_load_state("networkidle", timeout=12000)
+        except PlaywrightTimeoutError:
+            pass
+
+    def _assert_destination_loaded(self, page: Page, label: str, hints: tuple[str, ...]) -> None:
+        url = page.url or ""
+        if "auth.epakgroup.com" in url and "/user/login" in url:
+            raise AssertionError(f"{label}跳到了登录页: {url}")
+        body = ""
+        try:
+            body = page.evaluate("() => (document.body && document.body.innerText) || ''") or ""
+        except Exception:
+            body = ""
+        snippet = " ".join(body.split())
+        if self._DEST_ERROR_RE.search(snippet) or self._DEST_ERROR_RE.search(url):
+            raise AssertionError(f"{label}打开了错误页: {url}")
+        if len(snippet) < 40:
+            raise AssertionError(f"{label}页面内容过少，疑似空白: {url}")
+        if hints and not any(hint.lower() in snippet.lower() for hint in hints):
+            raise AssertionError(f"{label}未出现预期文案 {hints}，url={url}")
+        if "/category" in url:
+            try:
+                page.locator(self.PRODUCT_CARD).first.wait_for(state="visible", timeout=20000)
+            except PlaywrightTimeoutError:
+                raise AssertionError(f"{label}分类页未出现商品卡片") from None
+        self._assert_visible_images_loaded(page, label)
+
+    def _assert_visible_images_loaded(self, page: Page, label: str) -> None:
+        elapsed = 0
+        poll_ms = 500
+        stats = {"visible": 0, "loaded": 0, "broken": 0}
+        while elapsed <= 8000:
+            stats = page.evaluate(
+                """() => {
+                  const imgs = Array.from(document.images).filter((img) => {
+                    const r = img.getBoundingClientRect();
+                    return r.width > 20 && r.height > 20;
+                  });
+                  return {
+                    visible: imgs.length,
+                    loaded: imgs.filter((img) => img.complete && img.naturalWidth > 0).length,
+                    broken: imgs.filter((img) => img.complete && img.naturalWidth === 0).length,
+                  };
+                }"""
+            )
+            if stats["visible"] == 0:
+                return
+            if stats["loaded"] > 0 and stats["broken"] == 0:
+                return
+            if stats["loaded"] > 0 and elapsed >= 4000:
+                return
+            page.wait_for_timeout(poll_ms)
+            elapsed += poll_ms
+        if stats["visible"] > 0 and stats["loaded"] == 0:
+            raise AssertionError(f"{label}页面图片未加载完成: {stats}")
+
+    def _click_and_expect_url(self, locator, url_fragment: str, label: str, hints: tuple[str, ...]) -> str:
+        home_page = self.page
+        target = None
+        try:
+            with home_page.context.expect_page(timeout=8000) as popup_info:
+                locator.click(timeout=10000, force=True)
+            target = popup_info.value
+            self._wait_for_http_url(target)
+        except PlaywrightTimeoutError:
+            for extra in home_page.context.pages:
+                if extra is home_page:
+                    continue
+                if url_fragment.lower() in extra.url.lower():
+                    target = extra
+                    break
+            if target is None:
+                target = self.page
+                try:
+                    target.wait_for_function(
+                        """(frag) => (location.href || '').toLowerCase().includes(String(frag).toLowerCase())""",
+                        arg=url_fragment,
+                        timeout=15000,
+                    )
+                except PlaywrightTimeoutError:
+                    pass
+                self._wait_for_http_url(target)
+
+        current = target.url if target else home_page.url
+        if url_fragment.lower() not in current.lower():
+            href = ""
+            try:
+                href = locator.get_attribute("href") or ""
+            except Exception:
+                href = ""
+            if href and url_fragment.lower() in href.lower():
+                abs_url = href if href.startswith("http") else self.home_url.rstrip("/") + "/" + href.lstrip("/")
+                target = self.page
+                target.goto(
+                    abs_url,
+                    wait_until=settings.MALL_UI_GOTO_WAIT_UNTIL,
+                    timeout=settings.MALL_UI_NAV_TIMEOUT_MS,
+                )
+                self._wait_for_http_url(target)
+                current = target.url
+        if url_fragment.lower() not in current.lower():
+            raise AssertionError(f"{label}未打开预期页面，当前 url={current}")
+        self._assert_destination_loaded(target, label, hints)
+        if target is not None and target is not home_page:
+            try:
+                target.close()
+            except Exception:
+                pass
+            home_page.bring_to_front()
+            self.page = home_page
+        return current
 
     def _disable_float_header(self) -> None:
         self.page.evaluate(

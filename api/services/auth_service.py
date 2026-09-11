@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from api.client import ApiClient
 from config.settings import (
     API_TIMEOUT_SECONDS,
@@ -10,6 +12,7 @@ from config.settings import (
     BASE_URL,
     CRM_INQUIRY_SUPPLIER_AUTH_API_URL,
     CRM_INQUIRY_SUPPLIER_AUTH_ORIGIN,
+    EPAK_AUTH_URL,
     EPAK_LOGIN_PASSWORD_ENCRYPTED,
     EPAK_LOGIN_PHONE,
     EPAK_PLATFORM_ACCEPT_LANGUAGE,
@@ -17,6 +20,9 @@ from config.settings import (
     EPAK_PLATFORM_AUTH_ORIGIN,
     EPAK_PLATFORM_AUTH_REFERER,
     EPAK_PLATFORM_LANG_COOKIE,
+    ESB_AUTH_URL,
+    ESB_LOGIN_PASSWORD_ENCRYPTED,
+    ESB_LOGIN_PHONE,
 )
 
 LOGIN_EXPIRED_CODE = 1101
@@ -139,3 +145,66 @@ class AuthService:
             password_encrypted or EPAK_LOGIN_PASSWORD_ENCRYPTED,
             endpoint="en",
         )
+
+    def login_epak_ui(
+        self,
+        account: str | None = None,
+        password_encrypted: str | None = None,
+    ) -> dict:
+        """跟 EPAK 商城 UI 巡检同域登录（默认 auth.epakgroup.com 生产）。"""
+        origin = urlsplit(EPAK_AUTH_URL)
+        auth_origin = f"{origin.scheme}://{origin.netloc}"
+        api_url = f"{auth_origin}/api/member/login"
+        headers = self.build_login_headers("en")
+        headers["Origin"] = auth_origin
+        headers["Referer"] = f"{auth_origin}/user/login?"
+        json_body = {
+            "account": account or EPAK_LOGIN_PHONE,
+            "password": password_encrypted or EPAK_LOGIN_PASSWORD_ENCRYPTED,
+        }
+        resp = self.client.request(
+            "POST",
+            api_url,
+            json_body=json_body,
+            headers=headers,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if body.get("code") != LOGIN_SUCCESS_CODE:
+            raise AssertionError(f"EPAK UI 登录失败: {body}")
+        data = body.get("data") or {}
+        if not data.get("token"):
+            raise AssertionError(f"EPAK UI 登录未返回 token: {body}")
+        return data
+
+    def login_esbao_ui(
+        self,
+        account: str | None = None,
+        password_encrypted: str | None = None,
+    ) -> dict:
+        """跟易食包商城 UI 巡检同域登录（默认 auth.esbao.com 生产）。"""
+        origin = urlsplit(ESB_AUTH_URL)
+        auth_origin = f"{origin.scheme}://{origin.netloc}"
+        api_url = f"{auth_origin}/api/member/login"
+        headers = self.build_login_headers("cn")
+        headers["Origin"] = auth_origin
+        headers["Referer"] = f"{auth_origin}/user/login"
+        json_body = {
+            "account": account or ESB_LOGIN_PHONE,
+            "password": password_encrypted or ESB_LOGIN_PASSWORD_ENCRYPTED,
+        }
+        resp = self.client.request(
+            "POST",
+            api_url,
+            json_body=json_body,
+            headers=headers,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if body.get("code") != LOGIN_SUCCESS_CODE:
+            raise AssertionError(f"易食包 UI 登录失败: {body}")
+        data = body.get("data") or {}
+        if not data.get("token"):
+            raise AssertionError(f"易食包 UI 登录未返回 token: {body}")
+        return data
+

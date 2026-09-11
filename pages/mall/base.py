@@ -56,11 +56,11 @@ class MallAuthPageBase(BasePage):
         logo = self.page.locator(self.logo_selector).first
         logo.wait_for(state="visible", timeout=15000)
         try:
-            with self.page.context.expect_page(timeout=20000) as popup_info:
+            with self.page.context.expect_page(timeout=8000) as popup_info:
                 logo.click(timeout=10000)
             mall_page = popup_info.value
         except PlaywrightTimeoutError:
-            logo.click(timeout=10000)
+            # 同页跳转：第一次 click 已经离开登录页，不要再点一次。
             mall_page = self.page
         mall_page.wait_for_load_state("domcontentloaded", timeout=settings.MALL_UI_NAV_TIMEOUT_MS)
         try:
