@@ -399,6 +399,27 @@ class OrderService:
         payload["payments"][0]["payPrice"] = f"{total_price:.2f}"
         return payload
 
+    def ensure_order_customer_manager(
+        self,
+        ctx: AuthContext,
+        payload: dict,
+        *,
+        buyer_member_id: int,
+        buyer_member_name: str,
+        platform_base_url: str = PLATFORM_BASE_URL,
+    ) -> dict:
+        """代客下单必须带客户经理。优先用商城客户当前客户经理，停用则换成在职人员。"""
+        from api.services.crm_inquiry_service import CrmInquiryService
+
+        return CrmInquiryService(self.client).apply_customer_manager_to_order(
+            ctx,
+            payload,
+            snapshot=None,
+            buyer_member_id=buyer_member_id,
+            buyer_member_name=buyer_member_name,
+            platform_base_url=platform_base_url,
+        )
+
     def create_agent_order(
         self,
         ctx: AuthContext,
@@ -667,6 +688,12 @@ class OrderService:
             buyer_member_name=buyer_member_name,
             items=line_items,
             buyer_user_id=buyer_user_id,
+        )
+        self.ensure_order_customer_manager(
+            ctx,
+            order_payload,
+            buyer_member_id=buyer_member_id,
+            buyer_member_name=buyer_member_name,
         )
         create_body = self.create_agent_order(ctx, order_payload)
         self._assert_success(create_body, "代客下单")

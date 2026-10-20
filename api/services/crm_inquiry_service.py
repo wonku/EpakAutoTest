@@ -1194,6 +1194,202 @@ class CrmInquiryService:
             "sub": sub,
         }
 
+    @classmethod
+    def resolve_inquiry_customer_manager(
+        cls, snapshot: dict | None = None
+    ) -> tuple[int | None, str]:
+        """询价列表行已带客户经理；转单必须原样带到销售订单。"""
+        sources: list[dict] = []
+        if isinstance(snapshot, dict):
+            sources.append(snapshot)
+            row = snapshot.get("row")
+            sub = snapshot.get("sub")
+            if isinstance(row, dict):
+                sources.append(row)
+            if isinstance(sub, dict):
+                sources.append(sub)
+        manager_id = None
+        manager_name = ""
+        for src in sources:
+            if manager_id is None:
+                manager_id = cls._to_int(src.get("customerManagerId"))
+            if not manager_name:
+                manager_name = str(
+                    src.get("customerManager") or src.get("customerManagerName") or ""
+                ).strip()
+            if manager_id is not None and manager_name:
+                break
+        return manager_id, manager_name
+
+    def lookup_mall_customer_manager(
+        self,
+        ctx: AuthContext,
+        *,
+        member_id: int,
+        member_name: str,
+        platform_base_url: str,
+    ) -> tuple[int | None, str]:
+        base = platform_base_url.rstrip("/")
+        referer = "/memberCenter/customerAbility/customerDeposits/query"
+        headers = self.build_headers(ctx, referer_path=referer, origin=base)
+        page_resp = self.client.request(
+            "POST",
+            f"{base}/api/member/customer/ability/maintenance/page",
+            json_body={"current": 1, "pageSize": 10, "name": member_name},
+            headers=headers,
+            timeout=API_TIMEOUT_SECONDS,
+        )
+        page_resp.raise_for_status()
+        page = page_resp.json()
+        data = page.get("data") if isinstance(page, dict) else {}
+        rows = []
+        if isinstance(data, dict):
+            rows = data.get("data") or data.get("records") or data.get("list") or []
+        row = None
+        for item in rows if isinstance(rows, list) else []:
+            if not isinstance(item, dict):
+                continue
+            if self._to_int(item.get("memberId")) == int(member_id):
+                row = item
+                break
+            if str(item.get("name") or "").strip() == str(member_name).strip():
+                row = item
+        if row is None:
+            return None, ""
+        manager_id = self._to_int(row.get("customerManagerId"))
+        manager_name = str(
+            row.get("customerManagerName") or row.get("customerManager") or ""
+        ).strip()
+        validate_id = row.get("validateId")
+        if validate_id is None:
+            return manager_id, manager_name
+        detail_resp = self.client.request(
+            "GET",
+            f"{base}/api/member/customer/ability/maintenance/detail/basic",
+            params={"validateId": validate_id},
+            headers=headers,
+            timeout=API_TIMEOUT_SECONDS,
+        )
+        detail_resp.raise_for_status()
+        detail = detail_resp.json()
+        detail_data = detail.get("data") if isinstance(detail, dict) else {}
+        if isinstance(detail_data, dict):
+            manager_id = self._to_int(detail_data.get("customerManagerId")) or manager_id
+            manager_name = str(
+                detail_data.get("customerManagerName")
+                or detail_data.get("customerManager")
+                or manager_name
+            ).strip()
+        return manager_id, manager_name
+
+    def query_member_users(
+        self,
+        ctx: AuthContext,
+        *,
+        platform_base_url: str,
+        name: str = "",
+        page_size: int = 20,
+    ) -> list[dict]:
+        base = platform_base_url.rstrip("/")
+        headers = self.build_headers(
+            ctx,
+            referer_path="/memberCenter/orderAbility/saleOrder/agentOrder",
+            origin=base,
+        )
+        headers.pop("Content-Type", None)
+        params: dict[str, Any] = {"current": 1, "pageSize": page_size}
+        if name:
+            params["name"] = name
+        resp = self.client.request(
+            "GET",
+            f"{base}/api/member/user/page",
+            params=params,
+            headers=headers,
+            timeout=API_TIMEOUT_SECONDS,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        data = body.get("data") if isinstance(body, dict) else {}
+        rows = (data or {}).get("data") if isinstance(data, dict) else []
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+    @staticmethod
+    def is_active_user(user: dict | None) -> bool:
+        return isinstance(user, dict) and int(user.get("status") or 0) == 1
+
+    @staticmethod
+    def is_active_customer_manager(user: dict | None) -> bool:
+        if not CrmInquiryService.is_active_user(user):
+            return False
+        roles = str((user or {}).get("roleName") or "")
+        return "客户经理" in roles
+
+    def pick_valid_customer_manager(
+        self,
+        ctx: AuthContext,
+        *,
+        manager_id: int | None,
+        manager_name: str,
+        platform_base_url: str,
+    ) -> tuple[int | None, str]:
+        """询价/商城上的客户经理可能已停用，转单必须换成在职工号。"""
+        assigned = None
+        if manager_name:
+            for row in self.query_member_users(
+                ctx, platform_base_url=platform_base_url, name=manager_name
+            ):
+                if manager_id is not None and self._to_int(row.get("userId")) == manager_id:
+                    assigned = row
+                    break
+                if assigned is None and str(row.get("name") or "").strip() == manager_name:
+                    assigned = row
+        if self.is_active_user(assigned):
+            return self._to_int(assigned.get("userId")), str(assigned.get("name") or "").strip()
+        for fallback_name in ("蔡甜甜", "甜甜（采购员）", "甜甜"):
+            for row in self.query_member_users(
+                ctx, platform_base_url=platform_base_url, name=fallback_name
+            ):
+                if self.is_active_customer_manager(row) or self.is_active_user(row):
+                    return self._to_int(row.get("userId")), str(row.get("name") or "").strip()
+        raise AssertionError(
+            f"转单客户经理无效：{manager_name or '-'}(id={manager_id}) 已停用，"
+            "也找不到可用的在职客户经理（如蔡甜甜）。"
+        )
+
+    def apply_customer_manager_to_order(
+        self,
+        ctx: AuthContext,
+        payload: dict,
+        *,
+        snapshot: dict | None,
+        buyer_member_id: int,
+        buyer_member_name: str,
+        platform_base_url: str,
+    ) -> dict:
+        manager_id, manager_name = self.resolve_inquiry_customer_manager(snapshot)
+        if not manager_name:
+            manager_id, manager_name = self.lookup_mall_customer_manager(
+                ctx,
+                member_id=buyer_member_id,
+                member_name=buyer_member_name,
+                platform_base_url=platform_base_url,
+            )
+        manager_id, manager_name = self.pick_valid_customer_manager(
+            ctx,
+            manager_id=manager_id,
+            manager_name=manager_name,
+            platform_base_url=platform_base_url,
+        )
+        if not manager_name:
+            raise AssertionError(
+                f"转单缺少客户经理：{buyer_member_name}(memberId={buyer_member_id}) "
+                "询价单和商城客户都没有可用的在职客户经理。"
+            )
+        payload["customerManagerId"] = manager_id
+        payload["customerManager"] = manager_name
+        payload["customerManagerName"] = manager_name
+        return payload
+
     def refresh_snapshot(
         self,
         ctx: AuthContext,
