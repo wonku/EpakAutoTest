@@ -1,0 +1,23 @@
+[
+  {
+    "mall": "cn",
+    "customer": "衢州白马投资有限公司",
+    "sales": "甜甜",
+    "amount": 100,
+    "status": "待签署合同"
+  },
+  {
+    "mall": "cn",
+    "customer": "衢州白马投资有限公司",
+    "sales": "甜甜",
+    "amount": 200,
+    "status": "订单备货中"
+  },
+  {
+    "mall": "cn",
+    "customer": "衢州白马投资有限公司",
+    "sales": "甜甜",
+    "amount": 50,
+    "status": "已取消"
+  }
+]
